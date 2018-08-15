@@ -464,7 +464,7 @@ if test x$use_hardening != xno; then
   AX_CHECK_COMPILE_FLAG([-maes],[HARDENED_CFLAGS="$HARDENED_CFLAGS -maes"])
   AX_CHECK_COMPILE_FLAG([-Wstack-protector],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -Wstack-protector"])
   AX_CHECK_COMPILE_FLAG([-fstack-protector-all],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -fstack-protector-all"])
-  AX_CHECK_COMPILE_FLAG([-std=c++11],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -std=c++11"])
+  AX_CHECK_COMPILE_FLAG([-std=c++14],[HARDENED_CXXFLAGS="$HARDENED_CXXFLAGS -std=c++14"])
 
   AX_CHECK_PREPROC_FLAG([-D_FORTIFY_SOURCE=2],[
     AX_CHECK_PREPROC_FLAG([-U_FORTIFY_SOURCE],[
@@ -542,18 +542,6 @@ if test x$use_reduce_exports = xyes; then
   AX_CHECK_COMPILE_FLAG([-fvisibility=hidden],[RE_CXXFLAGS="-fvisibility=hidden"],
   [AC_MSG_ERROR([Cannot set default symbol visibility. Use --disable-reduce-exports.])])
 fi
-
-dnl This can go away when we require c++11
-TEMP_CXXFLAGS="$CXXFLAGS"
-CXXFLAGS="$CXXFLAGS -std=c++0x"
-AC_MSG_CHECKING(for c++11 atomics)
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-  #include <atomic>
-  ]],[[]])],
-  [ AC_MSG_RESULT(yes); LEVELDB_ATOMIC_CPPFLAGS="-DLEVELDB_ATOMIC_PRESENT"; LEVELDB_ATOMIC_CXXFLAGS="-std=c++0x"],
-  [ AC_MSG_RESULT(no)]
-)
-CXXFLAGS="$TEMP_CXXFLAGS"
 
 LEVELDB_CPPFLAGS=
 LIBLEVELDB=
