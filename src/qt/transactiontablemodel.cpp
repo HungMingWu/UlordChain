@@ -764,13 +764,17 @@ static void ShowProgress(TransactionTableModel *ttm, const std::string &title, i
 void TransactionTableModel::subscribeToCoreSignals()
 {
     // Connect signals to wallet
-    wallet->NotifyTransactionChanged.connect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
-    wallet->ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
+    wallet->NotifyTransactionChangedConn = wallet->NotifyTransactionChanged.connect([this](auto&&... params) {
+        return NotifyTransactionChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    wallet->ShowProgressConn = wallet->ShowProgress.connect([this](auto&&... params) {
+        return ShowProgress(this, std::forward<decltype(params)>(params)...);
+    });
 }
 
 void TransactionTableModel::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from wallet
-    wallet->NotifyTransactionChanged.disconnect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
-    wallet->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
+    wallet->NotifyTransactionChangedConn.disconnect();
+    wallet->ShowProgressConn.disconnect();
 }

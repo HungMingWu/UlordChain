@@ -1345,13 +1345,15 @@ static bool ThreadSafeMessageBox(BitcoinGUI *gui, const std::string& message, co
 void BitcoinGUI::subscribeToCoreSignals()
 {
     // Connect signals to client
-    uiInterface.ThreadSafeMessageBox.connect(boost::bind(ThreadSafeMessageBox, this, _1, _2, _3));
+    uiInterface.ThreadSafeMessageBoxConn = uiInterface.ThreadSafeMessageBox.connect([=](auto&&... params) {
+        return ThreadSafeMessageBox(this, std::forward<decltype(params)>(params)...);
+    });
 }
 
 void BitcoinGUI::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from client
-    uiInterface.ThreadSafeMessageBox.disconnect(boost::bind(ThreadSafeMessageBox, this, _1, _2, _3));
+    uiInterface.ThreadSafeMessageBoxConn.disconnect();
 }
 
 /** Get restart command-line parameters and request restart */

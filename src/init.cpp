@@ -73,9 +73,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/function.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
 #include <openssl/crypto.h>
@@ -1222,8 +1220,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
     // Start the lightweight task scheduler thread
-    CScheduler::Function serviceLoop = boost::bind(&CScheduler::serviceQueue, &scheduler);
-    threadGroup.create_thread(boost::bind(&TraceThread<CScheduler::Function>, "scheduler", serviceLoop));
+    CScheduler::Function serviceLoop = [&scheduler] { scheduler.serviceQueue(); };
+    threadGroup.create_thread(std::bind(&TraceThread<CScheduler::Function>, "scheduler", serviceLoop));
 #ifdef ENABLE_ADDRSTAT
 	MyAddrDb_init();
 #endif //ENABLE_ADDRSTAT
@@ -1785,7 +1783,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         BOOST_FOREACH(const std::string& strFile, mapMultiArgs["-loadblock"])
             vImportFiles.push_back(strFile);
     }
-    threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
+    threadGroup.create_thread(std::bind(&ThreadImport, vImportFiles));
     if (chainActive.Tip() == NULL) {
         LogPrintf("Waiting for genesis block to be imported...\n");
         while (!fRequestShutdown && chainActive.Tip() == NULL)
@@ -1926,7 +1924,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 11d: start ulord-privatesend thread
 
-    threadGroup.create_thread(boost::bind(&ThreadCheckPrivSendPool));
+    threadGroup.create_thread(std::bind(&ThreadCheckPrivSendPool));
 
     // ********************************************************* Step 12: start node
 
@@ -1960,7 +1958,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     //
     // --- disabled ---
     //int64_t nPowTargetSpacing = Params().GetConsensus().nPowTargetSpacing;
-    //CScheduler::Function f = boost::bind(&PartitionCheck, &IsInitialBlockDownload,
+    //CScheduler::Function f = std::bind(&PartitionCheck, &IsInitialBlockDownload,
     //                                     boost::ref(cs_main), boost::cref(pindexBestHeader), nPowTargetSpacing);
     //scheduler.scheduleEvery(f, nPowTargetSpacing);
     // --- end disabled ---
@@ -1979,7 +1977,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         pwalletMain->ReacceptWalletTransactions();
 
         // Run a thread to flush wallet periodically
-        threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
+        threadGroup.create_thread(std::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
     }
 #endif
 

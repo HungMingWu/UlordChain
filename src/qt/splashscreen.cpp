@@ -137,28 +137,36 @@ static void ShowProgress(SplashScreen *splash, const std::string &title, int nPr
 #ifdef ENABLE_WALLET
 static void ConnectWallet(SplashScreen *splash, CWallet* wallet)
 {
-    wallet->ShowProgress.connect(boost::bind(ShowProgress, splash, _1, _2));
+    wallet->ShowProgressConn = wallet->ShowProgress.connect([=](auto&&... params) {
+        return ShowProgress(splash, std::forward<decltype(params)>(params)...);
+    });
 }
 #endif
 
 void SplashScreen::subscribeToCoreSignals()
 {
     // Connect signals to client
-    uiInterface.InitMessage.connect(boost::bind(InitMessage, this, _1));
-    uiInterface.ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
+    uiInterface.InitMessageConn = uiInterface.InitMessage.connect([=](auto&&... params) {
+        return InitMessage(this, std::forward<decltype(params)>(params)...);
+    });
+    uiInterface.ShowProgressConn = uiInterface.ShowProgress.connect([=](auto&&... params) {
+        return ShowProgress(this, std::forward<decltype(params)>(params)...);
+    });
 #ifdef ENABLE_WALLET
-    uiInterface.LoadWallet.connect(boost::bind(ConnectWallet, this, _1));
+    uiInterface.LoadWallet.connect([=](auto&&... params) {
+        return ConnectWallet(this, std::forward<decltype(params)>(params)...);
+    });
 #endif
 }
 
 void SplashScreen::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from client
-    uiInterface.InitMessage.disconnect(boost::bind(InitMessage, this, _1));
-    uiInterface.ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
+    uiInterface.InitMessageConn.disconnect();
+    uiInterface.ShowProgressConn.disconnect();
 #ifdef ENABLE_WALLET
     if(pwalletMain)
-        pwalletMain->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
+        pwalletMain->ShowProgressConn.disconnect();
 #endif
 }
 

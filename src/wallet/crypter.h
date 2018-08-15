@@ -215,6 +215,7 @@ public:
      * Note: Called without locks held.
      */
     boost::signals2::signal<void (CCryptoKeyStore* wallet)> NotifyStatusChanged;
+    boost::signals2::connection NotifyStatusChangedConn;
 };
 
 #endif // ULORD_WALLET_CRYPTER_H

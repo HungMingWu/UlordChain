@@ -672,5 +672,5 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
 
     minerThreads = new boost::thread_group();
     for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&BitcoinMiner, boost::cref(chainparams)));
+        minerThreads->create_thread(std::bind(&BitcoinMiner, boost::cref(chainparams)));
 }

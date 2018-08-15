@@ -3023,7 +3023,7 @@ UniValue walletpassphrase(const UniValue& params, bool fHelp)
 
     LOCK(cs_nWalletUnlockTime);
     nWalletUnlockTime = GetTime() + nSleepTime;
-    RPCRunLater("lockwallet", boost::bind(LockWallet, pwalletMain), nSleepTime);
+    RPCRunLater("lockwallet", std::bind(LockWallet, pwalletMain), nSleepTime);
 
     return NullUniValue;
 }

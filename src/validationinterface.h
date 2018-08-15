@@ -49,24 +49,34 @@ protected:
 struct CMainSignals {
     /** Notifies listeners of updated block chain tip */
     boost::signals2::signal<void (const CBlockIndex *)> UpdatedBlockTip;
+    boost::signals2::connection UpdatedBlockTipConn;
     /** Notifies listeners of updated transaction data (transaction, and optionally the block it is found in. */
     boost::signals2::signal<void (const CTransaction &, const CBlock *)> SyncTransaction;
+    boost::signals2::connection SyncTransactionConn;
     /** Notifies listeners of an updated transaction lock without new data. */
     boost::signals2::signal<void (const CTransaction &)> NotifyTransactionLock;
+    boost::signals2::connection NotifyTransactionLockConn;
     /** Notifies listeners of an updated transaction without new data (for now: a coinbase potentially becoming visible). */
     boost::signals2::signal<bool (const uint256 &)> UpdatedTransaction;
+    boost::signals2::connection UpdatedTransactionConn;
     /** Notifies listeners of a new active block chain. */
     boost::signals2::signal<void (const CBlockLocator &)> SetBestChain;
+    boost::signals2::connection SetBestChainConn;
     /** Notifies listeners about an inventory item being seen on the network. */
     boost::signals2::signal<void (const uint256 &)> Inventory;
+    boost::signals2::connection InventoryConn;
     /** Tells listeners to broadcast their data. */
     boost::signals2::signal<void (int64_t nBestBlockTime)> Broadcast;
+    boost::signals2::connection BroadcastConn;
     /** Notifies listeners of a block validation result */
     boost::signals2::signal<void (const CBlock&, const CValidationState&)> BlockChecked;
+    boost::signals2::connection BlockCheckedConn;
     /** Notifies listeners that a key for mining is required (coinbase) */
     boost::signals2::signal<void (boost::shared_ptr<CReserveScript>&)> ScriptForMining;
+    boost::signals2::connection ScriptForMiningConn;
     /** Notifies listeners that a block has been successfully mined */
     boost::signals2::signal<void (const uint256 &)> BlockFound;
+    boost::signals2::connection BlockFoundConn;
 };
 
 CMainSignals& GetMainSignals();

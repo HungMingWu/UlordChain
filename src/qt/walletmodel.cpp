@@ -547,21 +547,31 @@ static void NotifyWatchonlyChanged(WalletModel *walletmodel, bool fHaveWatchonly
 void WalletModel::subscribeToCoreSignals()
 {
     // Connect signals to wallet
-    wallet->NotifyStatusChanged.connect(boost::bind(&NotifyKeyStoreStatusChanged, this, _1));
-    wallet->NotifyAddressBookChanged.connect(boost::bind(NotifyAddressBookChanged, this, _1, _2, _3, _4, _5, _6));
-    wallet->NotifyTransactionChanged.connect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
-    wallet->ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
-    wallet->NotifyWatchonlyChanged.connect(boost::bind(NotifyWatchonlyChanged, this, _1));
+    wallet->NotifyStatusChangedConn = wallet->NotifyStatusChanged.connect([=](auto&&... params) {
+        return NotifyKeyStoreStatusChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    wallet->NotifyAddressBookChangedConn = wallet->NotifyAddressBookChanged.connect([=](auto&&... params) {
+        return NotifyAddressBookChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    wallet->NotifyTransactionChangedConn = wallet->NotifyTransactionChanged.connect([=](auto&&... params) {
+        return NotifyTransactionChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    wallet->ShowProgressConn = wallet->ShowProgress.connect([=](auto&&... params) {
+        return ShowProgress(this, std::forward<decltype(params)>(params)...);
+    });
+    wallet->NotifyWatchonlyChangedConn = wallet->NotifyWatchonlyChanged.connect([=](auto&&... params) {
+        return NotifyWatchonlyChanged(this, std::forward<decltype(params)>(params)...);
+    });
 }
 
 void WalletModel::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from wallet
-    wallet->NotifyStatusChanged.disconnect(boost::bind(&NotifyKeyStoreStatusChanged, this, _1));
-    wallet->NotifyAddressBookChanged.disconnect(boost::bind(NotifyAddressBookChanged, this, _1, _2, _3, _4, _5, _6));
-    wallet->NotifyTransactionChanged.disconnect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
-    wallet->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
-    wallet->NotifyWatchonlyChanged.disconnect(boost::bind(NotifyWatchonlyChanged, this, _1));
+    wallet->NotifyStatusChangedConn.disconnect();
+    wallet->NotifyAddressBookChangedConn.disconnect();
+    wallet->NotifyTransactionChangedConn.disconnect();
+    wallet->ShowProgressConn.disconnect();
+    wallet->NotifyWatchonlyChangedConn.disconnect();
 }
 
 // WalletModel::UnlockContext implementation

@@ -896,6 +896,7 @@ public:
             &address, const std::string &label, bool isMine,
             const std::string &purpose,
             ChangeType status)> NotifyAddressBookChanged;
+    boost::signals2::connection NotifyAddressBookChangedConn;
 
     /** 
      * Wallet transaction added, removed or updated.
@@ -903,12 +904,15 @@ public:
      */
     boost::signals2::signal<void (CWallet *wallet, const uint256 &hashTx,
             ChangeType status)> NotifyTransactionChanged;
+    boost::signals2::connection NotifyTransactionChangedConn;
 
     /** Show progress e.g. for rescan */
     boost::signals2::signal<void (const std::string &title, int nProgress)> ShowProgress;
+    boost::signals2::connection ShowProgressConn;
 
     /** Watch-only address added */
     boost::signals2::signal<void (bool fHaveWatchOnly)> NotifyWatchonlyChanged;
+    boost::signals2::connection NotifyWatchonlyChangedConn;
 
     /** Inquire whether this wallet broadcasts transactions. */
     bool GetBroadcastTransactions() const { return fBroadcastTransactions; }

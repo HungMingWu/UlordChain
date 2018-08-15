@@ -305,21 +305,33 @@ static void NotifyAdditionalDataSyncProgressChanged(ClientModel *clientmodel, do
 void ClientModel::subscribeToCoreSignals()
 {
     // Connect signals to client
-    uiInterface.ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
-    uiInterface.NotifyNumConnectionsChanged.connect(boost::bind(NotifyNumConnectionsChanged, this, _1));
-    uiInterface.NotifyAlertChanged.connect(boost::bind(NotifyAlertChanged, this, _1, _2));
-    uiInterface.BannedListChanged.connect(boost::bind(BannedListChanged, this));
-    uiInterface.NotifyBlockTip.connect(boost::bind(BlockTipChanged, this, _1, _2));
-    uiInterface.NotifyAdditionalDataSyncProgressChanged.connect(boost::bind(NotifyAdditionalDataSyncProgressChanged, this, _1));
+    uiInterface.ShowProgressConn = uiInterface.ShowProgress.connect([=](auto&&... params) {
+        return ShowProgress(this, std::forward<decltype(params)>(params)...);
+    });
+    uiInterface.NotifyNumConnectionsChangedConn = uiInterface.NotifyNumConnectionsChanged.connect([=](auto&&... params) {
+        return NotifyNumConnectionsChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    uiInterface.NotifyAlertChangedConn = uiInterface.NotifyAlertChanged.connect([=](auto&&... params) {
+        return NotifyAlertChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    uiInterface.BannedListChangedConn = uiInterface.BannedListChanged.connect([=](auto&&... params) {
+        return BannedListChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    uiInterface.NotifyBlockTipConn = uiInterface.NotifyBlockTip.connect([=](auto&&... params) {
+        return BlockTipChanged(this, std::forward<decltype(params)>(params)...);
+    });
+    uiInterface.NotifyAdditionalDataSyncProgressChangedConn = uiInterface.NotifyAdditionalDataSyncProgressChanged.connect([=](auto&&... params) {
+        return NotifyAdditionalDataSyncProgressChanged(this, std::forward<decltype(params)>(params)...);
+    });
 }
 
 void ClientModel::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from client
-    uiInterface.ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
-    uiInterface.NotifyNumConnectionsChanged.disconnect(boost::bind(NotifyNumConnectionsChanged, this, _1));
-    uiInterface.NotifyAlertChanged.disconnect(boost::bind(NotifyAlertChanged, this, _1, _2));
-    uiInterface.BannedListChanged.disconnect(boost::bind(BannedListChanged, this));
-    uiInterface.NotifyBlockTip.disconnect(boost::bind(BlockTipChanged, this, _1, _2));
-    uiInterface.NotifyAdditionalDataSyncProgressChanged.disconnect(boost::bind(NotifyAdditionalDataSyncProgressChanged, this, _1));
+    uiInterface.ShowProgressConn.disconnect();
+    uiInterface.NotifyNumConnectionsChangedConn.disconnect();
+    uiInterface.NotifyAlertChangedConn.disconnect();
+    uiInterface.BannedListChangedConn.disconnect();
+    uiInterface.NotifyBlockTipConn.disconnect();
+    uiInterface.NotifyAdditionalDataSyncProgressChangedConn.disconnect();
 }

@@ -75,12 +75,15 @@ public:
 
     /** Show message box. */
     boost::signals2::signal<bool (const std::string& message, const std::string& caption, unsigned int style), boost::signals2::last_value<bool> > ThreadSafeMessageBox;
+    boost::signals2::connection ThreadSafeMessageBoxConn;
 
     /** Progress message during initialization. */
     boost::signals2::signal<void (const std::string &message)> InitMessage;
+    boost::signals2::connection InitMessageConn;
 
     /** Number of network connections changed. */
     boost::signals2::signal<void (int newNumConnections)> NotifyNumConnectionsChanged;
+    boost::signals2::connection NotifyNumConnectionsChangedConn;
 
     /** Number of masternodes changed. */
     boost::signals2::signal<void (int newNumMasternodes)> NotifyStrMasternodeCountChanged;
@@ -90,21 +93,25 @@ public:
      * @note called with lock cs_mapAlerts held.
      */
     boost::signals2::signal<void (const uint256 &hash, ChangeType status)> NotifyAlertChanged;
+    boost::signals2::connection NotifyAlertChangedConn;
 
     /** A wallet has been loaded. */
     boost::signals2::signal<void (CWallet* wallet)> LoadWallet;
 
     /** Show progress e.g. for verifychain */
     boost::signals2::signal<void (const std::string &title, int nProgress)> ShowProgress;
+    boost::signals2::connection ShowProgressConn;
 
     /** New block has been accepted */
     boost::signals2::signal<void (bool, const CBlockIndex *)> NotifyBlockTip;
+    boost::signals2::connection NotifyBlockTipConn;
 
     /** Additional data sync progress changed */
     boost::signals2::signal<void (double nSyncProgress)> NotifyAdditionalDataSyncProgressChanged;
-
+    boost::signals2::connection NotifyAdditionalDataSyncProgressChangedConn;
     /** Banlist did change. */
     boost::signals2::signal<void (void)> BannedListChanged;
+    boost::signals2::connection BannedListChangedConn;
 };
 
 extern CClientUIInterface uiInterface;
