@@ -1044,7 +1044,7 @@ void CGovernanceManager::RequestGovernanceObjectVotes(const std::vector<CNode*>&
             nHashGovobj = vpGovObjsTmp.back()->GetHash();
         }
         bool fAsked = false;
-        BOOST_FOREACH(CNode* pnode, vNodesCopy) {
+        for (CNode* pnode : vNodesCopy) {
             // only use reqular peers, don't try to ask from temporary nodes we connected to -
             // they stay connected for a short period of time and it's possible that we won't get everything we should
             if(pnode->fMasternode) continue;

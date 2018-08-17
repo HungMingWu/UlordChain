@@ -198,7 +198,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             const CTransaction& tx = iter->GetTx();
 
             bool fOrphan = false;
-            BOOST_FOREACH(CTxMemPool::txiter parent, mempool.GetMemPoolParents(iter))
+            for (CTxMemPool::txiter parent : mempool.GetMemPoolParents(iter))
             {
                 if (!inBlock.count(parent)) {
                     fOrphan = true;
@@ -241,7 +241,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             typedef std::vector<std::pair<std::string, uint160> > spentClaimsType;
             spentClaimsType spentClaims;
 
-            BOOST_FOREACH(const CTxIn& txin, tx.vin)
+            for (const CTxIn& txin : tx.vin)
             {
                 const CCoins* coins = view.AccessCoins(txin.prevout.hash);
                 int nTxinHeight = 0;
@@ -258,7 +258,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                 }
                 else // must be in block or else
                 {
-                    BOOST_FOREACH(CTxMemPool::txiter inBlockEntry, inBlock)
+                    for (CTxMemPool::txiter inBlockEntry : inBlock)
                     {
                         CTransaction inBlockTx = inBlockEntry->GetTx();
                         if (inBlockTx.GetHash() == txin.prevout.hash)
@@ -410,7 +410,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             inBlock.insert(iter);
 
             // Add transactions that depend on this one to the priority queue
-            BOOST_FOREACH(CTxMemPool::txiter child, mempool.GetMemPoolChildren(iter))
+            for (CTxMemPool::txiter child : mempool.GetMemPoolChildren(iter))
             {
                 if (fPriorityBlock) {
                     waitPriIter wpiter = waitPriMap.find(child);

@@ -20,7 +20,7 @@ CMasternodeSync masternodeSync;
 void ReleaseNodes(const std::vector<CNode*> &vNodesCopy)
 {
     LOCK(cs_vNodes);
-    BOOST_FOREACH(CNode* pnode, vNodesCopy)
+    for (CNode* pnode : vNodesCopy)
         pnode->Release();
 }
 
@@ -106,7 +106,7 @@ bool CMasternodeSync::IsBlockchainSynced(bool fBlockAccepted)
     {
         LOCK(cs_vNodes);
         vNodesCopy = vNodes;
-        BOOST_FOREACH(CNode* pnode, vNodesCopy)
+        for (CNode* pnode : vNodesCopy)
             pnode->AddRef();
     }
 
@@ -114,7 +114,7 @@ bool CMasternodeSync::IsBlockchainSynced(bool fBlockAccepted)
     if(vNodes.size() >= MASTERNODE_SYNC_ENOUGH_PEERS) {
         // Check to see how many of our peers are (almost) at the same height as we are
         int nNodesAtSameHeight = 0;
-        BOOST_FOREACH(CNode* pnode, vNodesCopy)
+        for (CNode* pnode : vNodesCopy)
         {
             // Make sure this peer is presumably at the same height
             if(!CheckNodeHeight(pnode)) continue;
@@ -211,7 +211,7 @@ void CMasternodeSync::SwitchToNextAsset()
             TRY_LOCK(cs_vNodes, lockRecv);
             if(!lockRecv) return;
 
-            BOOST_FOREACH(CNode* pnode, vNodes) {
+            for (CNode* pnode : vNodes) {
                 netfulfilledman.AddFulfilledRequest(pnode->addr, "full-sync");
             }
 
@@ -255,7 +255,7 @@ void CMasternodeSync::ClearFulfilledRequests()
     TRY_LOCK(cs_vNodes, lockRecv);
     if(!lockRecv) return;
 
-    BOOST_FOREACH(CNode* pnode, vNodes)
+    for (CNode* pnode : vNodes)
     {
         netfulfilledman.RemoveFulfilledRequest(pnode->addr, "spork-sync");
         netfulfilledman.RemoveFulfilledRequest(pnode->addr, "masternode-list-sync");
@@ -291,7 +291,7 @@ void CMasternodeSync::ProcessTick()
                 {
                     LOCK(cs_vNodes);
                     vNodesCopy = vNodes;
-                    BOOST_FOREACH(CNode* pnode, vNodesCopy)
+                    for (CNode* pnode : vNodesCopy)
                         pnode->AddRef();
                 }
                 governance.RequestGovernanceObjectVotes(vNodesCopy);
@@ -335,11 +335,11 @@ void CMasternodeSync::ProcessTick()
     {
         LOCK(cs_vNodes);
         vNodesCopy = vNodes;
-        BOOST_FOREACH(CNode* pnode, vNodesCopy)
+        for (CNode* pnode : vNodesCopy)
             pnode->AddRef();
     }
 
-    BOOST_FOREACH(CNode* pnode, vNodesCopy)
+    for (CNode* pnode : vNodesCopy)
     {
         // QUICK MODE (REGTEST ONLY!)
         if(Params().NetworkIDString() == CBaseChainParams::REGTEST)

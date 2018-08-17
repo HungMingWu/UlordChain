@@ -159,7 +159,7 @@ void CActiveMasternode::ManageStateInitial()
                 return;
             }
             // We have some peers, let's try to find our local address from one of them
-            BOOST_FOREACH(CNode* pnode, vNodes) {
+            for (CNode* pnode : vNodes) {
 LogPrintf("fSuccessfullyConnected = %c, addr.IsIPv4 = %c\n", pnode->fSuccessfullyConnected ? 'y' : 'n', pnode->addr.IsIPv4() ? 'y' : 'n' );            
 			    if (pnode->fSuccessfullyConnected && pnode->addr.IsIPv4()) {
                     fFoundLocal = GetLocal(service, &pnode->addr) && CMasternode::IsValidNetAddr(service);

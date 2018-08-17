@@ -437,7 +437,7 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
             CAmount nMasternodePayment = GetMasternodePayment(BlockReading->nHeight);
 
-            BOOST_FOREACH(CTxOut txout, block.vtx[0].vout)
+            for (CTxOut txout : block.vtx[0].vout)
                 if(mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
                     nBlockLastPaid = BlockReading->nHeight;
                     nTimeLastPaid = BlockReading->nTime;

@@ -256,7 +256,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue statusObj(UniValue::VOBJ);
         statusObj.push_back(Pair("alias", strAlias));
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
                 std::string strError;
@@ -301,7 +301,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         UniValue resultsObj(UniValue::VOBJ);
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             std::string strError;
 
             CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
@@ -349,7 +349,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     {
         UniValue resultObj(UniValue::VOBJ);
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternode *pmn = mnodeman.Find(vin);
 
@@ -374,7 +374,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
         pwalletMain->AvailableCoins(vPossibleCoins, true, NULL, false, ONLY_10000);
 
         UniValue obj(UniValue::VOBJ);
-        BOOST_FOREACH(COutput& out, vPossibleCoins) {
+        for (COutput& out : vPossibleCoins) {
             obj.push_back(Pair(out.tx->GetHash().ToString(), strprintf("%d", out.i)));
         }
 
@@ -525,14 +525,14 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
     if (strMode == "rank") {
         std::vector<std::pair<int, CMasternode> > vMasternodeRanks = mnodeman.GetMasternodeRanks();
-        BOOST_FOREACH(PAIRTYPE(int, CMasternode)& s, vMasternodeRanks) {
+        for (auto &s : vMasternodeRanks) {
             std::string strOutpoint = s.second.vin.prevout.ToStringShort();
             if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
             obj.push_back(Pair(strOutpoint, s.first));
         }
     } else {
         std::vector<CMasternode> vMasternodes = mnodeman.GetFullMasternodeVector();
-        BOOST_FOREACH(CMasternode& mn, vMasternodes) {
+        for (CMasternode& mn : vMasternodes) {
             std::string strOutpoint = mn.vin.prevout.ToStringShort();
             if (strMode == "activeseconds") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;
@@ -647,7 +647,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
 
         statusObj.push_back(Pair("alias", strAlias));
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
                 std::string strError;
@@ -697,7 +697,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         UniValue resultsObj(UniValue::VOBJ);
         std::vector<CMasternodeBroadcast> vecMnb;
 
-        BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
+        for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             std::string strError;
             CMasternodeBroadcast mnb;
 
@@ -743,7 +743,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         int nDos = 0;
         UniValue returnObj(UniValue::VOBJ);
 
-        BOOST_FOREACH(CMasternodeBroadcast& mnb, vecMnb) {
+        for (CMasternodeBroadcast& mnb : vecMnb) {
             UniValue resultObj(UniValue::VOBJ);
 
             if(mnb.CheckSignature(nDos)) {
@@ -797,7 +797,7 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         UniValue returnObj(UniValue::VOBJ);
 
         // verify all signatures first, bailout if any of them broken
-        BOOST_FOREACH(CMasternodeBroadcast& mnb, vecMnb) {
+        for (CMasternodeBroadcast& mnb : vecMnb) {
             UniValue resultObj(UniValue::VOBJ);
 
             resultObj.push_back(Pair("vin", mnb.vin.ToString()));
