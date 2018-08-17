@@ -16,9 +16,10 @@
 #include "version.h"
 
 #include <stdint.h>
+#include <array>
 #include <string>
 
-#define MESSAGE_START_SIZE 4
+constexpr static size_t MESSAGE_START_SIZE = 4;
 
 /** Message header.
  * (4) message start.
@@ -29,7 +30,7 @@
 class CMessageHeader
 {
 public:
-    typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
+    using MessageStartChars = std::array<uint8_t, MESSAGE_START_SIZE>;
 
     CMessageHeader(const MessageStartChars& pchMessageStartIn);
     CMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
@@ -59,7 +60,7 @@ public:
         CHECKSUM_OFFSET = MESSAGE_SIZE_OFFSET + MESSAGE_SIZE_SIZE,
         HEADER_SIZE = MESSAGE_START_SIZE + COMMAND_SIZE + MESSAGE_SIZE_SIZE + CHECKSUM_SIZE
     };
-    char pchMessageStart[MESSAGE_START_SIZE];
+    MessageStartChars pchMessageStart;
     char pchCommand[COMMAND_SIZE];
     unsigned int nMessageSize;
     unsigned int nChecksum;

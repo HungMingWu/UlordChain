@@ -147,17 +147,17 @@ const static std::string allNetMessageTypes[] = {
 };
 const static std::vector<std::string> allNetMessageTypesVec(allNetMessageTypes, allNetMessageTypes+ARRAYLEN(allNetMessageTypes));
 
-CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn)
+CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn) 
+: pchMessageStart(pchMessageStartIn)
 {
-    memcpy(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE);
     memset(pchCommand, 0, sizeof(pchCommand));
     nMessageSize = -1;
     nChecksum = 0;
 }
 
 CMessageHeader::CMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn)
+: pchMessageStart(pchMessageStartIn)
 {
-    memcpy(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE);
     memset(pchCommand, 0, sizeof(pchCommand));
     strncpy(pchCommand, pszCommand, COMMAND_SIZE);
     nMessageSize = nMessageSizeIn;
@@ -172,7 +172,7 @@ std::string CMessageHeader::GetCommand() const
 bool CMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) const
 {
     // Check start string
-    if (memcmp(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE) != 0)
+    if (pchMessageStart != pchMessageStartIn)
         return false;
 
     // Check the command string for errors

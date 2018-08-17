@@ -118,7 +118,7 @@ private:
         }
 
 
-        unsigned char pchMsgTmp[4];
+        CMessageHeader::MessageStartChars pchMsgTmp;
         std::string strMagicMessageTmp;
         try {
             // de-serialize file header (file specific magic message) and ..
@@ -136,7 +136,7 @@ private:
             ssObj >> FLATDATA(pchMsgTmp);
 
             // ... verify the network matches ours
-            if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+            if (pchMsgTmp != Params().MessageStart())
             {
                 error("%s: Invalid network magic number", __func__);
                 return IncorrectMagicNumber;

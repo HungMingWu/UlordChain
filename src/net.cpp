@@ -2421,7 +2421,7 @@ bool CAddrDB::Read(CAddrMan& addr)
         ssPeers >> FLATDATA(pchMsgTmp);
 
         // ... verify the network matches ours
-        if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+        if (memcmp(pchMsgTmp, Params().MessageStart().data(), sizeof(pchMsgTmp)))
             return error("%s: Invalid network magic number", __func__);
 
         // de-serialize address data into one CAddrMan object
@@ -2701,13 +2701,13 @@ bool CBanDB::Read(banmap_t& banSet)
     if (hashIn != hashTmp)
         return error("%s: Checksum mismatch, data corrupted", __func__);
 
-    unsigned char pchMsgTmp[4];
+    CMessageHeader::MessageStartChars pchMsgTmp;
     try {
         // de-serialize file header (network specific magic number) and ..
         ssBanlist >> FLATDATA(pchMsgTmp);
 
         // ... verify the network matches ours
-        if (memcmp(pchMsgTmp, Params().MessageStart(), sizeof(pchMsgTmp)))
+        if (pchMsgTmp != Params().MessageStart())
             return error("%s: Invalid network magic number", __func__);
         
         // de-serialize address data into one CAddrMan object
