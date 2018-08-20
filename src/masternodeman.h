@@ -10,7 +10,7 @@
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
-
+#include <boost/optional.hpp>
 
 using namespace std;
 
@@ -269,9 +269,9 @@ public:
 
     bool Has(const CTxIn& vin);
 
-    masternode_info_t GetMasternodeInfo(const CTxIn& vin);
+    boost::optional<masternode_info_t> GetMasternodeInfo(const CTxIn& vin);
 
-    masternode_info_t GetMasternodeInfo(const CPubKey& pubKeyMasternode);
+    boost::optional<masternode_info_t> GetMasternodeInfo(const CPubKey& pubKeyMasternode);
 
     /// Find an entry in the masternode list that is next to be paid
     CMasternode* GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount);

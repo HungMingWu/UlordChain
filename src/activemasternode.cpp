@@ -247,36 +247,36 @@ void CActiveMasternode::ManageStateRemote()
              GetStatus(), fPingerEnabled, GetTypeString(), pubKeyMasternode.GetID().ToString());
 
     mnodeman.CheckMasternode(pubKeyMasternode);
-    masternode_info_t infoMn = mnodeman.GetMasternodeInfo(pubKeyMasternode);
-    if(infoMn.fInfoValid) {
-        if(infoMn.nProtocolVersion != PROTOCOL_VERSION) {
+    boost::optional<masternode_info_t> infoMn = mnodeman.GetMasternodeInfo(pubKeyMasternode);
+    if (infoMn) {
+        if (infoMn->nProtocolVersion != PROTOCOL_VERSION) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
             strNotCapableReason = "Invalid protocol version";
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(service != infoMn.addr) {
+        if (service != infoMn->addr) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
             strNotCapableReason = "Specified IP doesn't match our external address.";
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(vin != infoMn.vin) {
+        if (vin != infoMn->vin) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
             strNotCapableReason = "Specified collateraloutputtxid doesn't match our external vin.";
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(!CMasternode::IsValidStateForAutoStart(infoMn.nActiveState)) {
+        if (!CMasternode::IsValidStateForAutoStart(infoMn->nActiveState)) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
-            strNotCapableReason = strprintf("Masternode in %s state", CMasternode::StateToString(infoMn.nActiveState));
+            strNotCapableReason = strprintf("Masternode in %s state", CMasternode::StateToString(infoMn->nActiveState));
             LogPrintf("CActiveMasternode::ManageStateRemote -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
-        if(nState != ACTIVE_MASTERNODE_STARTED) {
+        if (nState != ACTIVE_MASTERNODE_STARTED) {
             LogPrintf("CActiveMasternode::ManageStateRemote -- STARTED!\n");
-            vin = infoMn.vin;
-            service = infoMn.addr;
+            vin = infoMn->vin;
+            service = infoMn->addr;
             fPingerEnabled = true;
             nState = ACTIVE_MASTERNODE_STARTED;
         }

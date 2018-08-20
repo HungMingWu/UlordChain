@@ -363,7 +363,6 @@ masternode_info_t CMasternode::GetInfo()
     info.nTimeLastWatchdogVote = nTimeLastWatchdogVote;
     info.nActiveState = nActiveState;
     info.nProtocolVersion = nProtocolVersion;
-    info.fInfoValid = true;
     return info;
 }
 

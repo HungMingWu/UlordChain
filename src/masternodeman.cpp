@@ -584,28 +584,22 @@ bool CMasternodeMan::Get(const CTxIn& vin, CMasternode& masternode)
     return true;
 }
 
-masternode_info_t CMasternodeMan::GetMasternodeInfo(const CTxIn& vin)
+boost::optional<masternode_info_t> CMasternodeMan::GetMasternodeInfo(const CTxIn& vin)
 {
-    masternode_info_t info;
     LOCK(cs);
     CMasternode* pMN = Find(vin);
-    if(!pMN)  {
-        return info;
-    }
-    info = pMN->GetInfo();
-    return info;
+    if (!pMN)
+        return {};
+    return pMN->GetInfo();
 }
 
-masternode_info_t CMasternodeMan::GetMasternodeInfo(const CPubKey& pubKeyMasternode)
+boost::optional<masternode_info_t> CMasternodeMan::GetMasternodeInfo(const CPubKey& pubKeyMasternode)
 {
-    masternode_info_t info;
     LOCK(cs);
     CMasternode* pMN = Find(pubKeyMasternode);
-    if(!pMN)  {
-        return info;
-    }
-    info = pMN->GetInfo();
-    return info;
+    if (!pMN)
+        return {};
+    return pMN->GetInfo();
 }
 
 bool CMasternodeMan::Has(const CTxIn& vin)

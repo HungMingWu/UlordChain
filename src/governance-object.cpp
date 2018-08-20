@@ -445,16 +445,16 @@ bool CGovernanceObject::IsValidLocally(std::string& strError, bool& fMissingMast
     if(fCheckCollateral) { 
         if((nObjectType == GOVERNANCE_OBJECT_TRIGGER) || (nObjectType == GOVERNANCE_OBJECT_WATCHDOG)) {
             std::string strOutpoint = vinMasternode.prevout.ToStringShort();
-            masternode_info_t infoMn = mnodeman.GetMasternodeInfo(vinMasternode);
-            if(!infoMn.fInfoValid) {
+            boost::optional<masternode_info_t> infoMn = mnodeman.GetMasternodeInfo(vinMasternode);
+            if (!infoMn) {
                 fMissingMasternode = true;
                 strError = "Masternode not found: " + strOutpoint;
                 return false;
             }
 
             // Check that we have a valid MN signature
-            if(!CheckSignature(infoMn.pubKeyMasternode)) {
-                strError = "Invalid masternode signature for: " + strOutpoint + ", pubkey id = " + infoMn.pubKeyMasternode.GetID().ToString();
+            if(!CheckSignature(infoMn->pubKeyMasternode)) {
+                strError = "Invalid masternode signature for: " + strOutpoint + ", pubkey id = " + infoMn->pubKeyMasternode.GetID().ToString();
                 return false;
             }
 
