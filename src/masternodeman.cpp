@@ -213,9 +213,9 @@ void CMasternodeMan::AskForMN(CNode* pnode, const CTxIn &vin)
 
     LOCK(cs);
 
-    std::map<COutPoint, std::map<CNetAddr, int64_t> >::iterator it1 = mWeAskedForMasternodeListEntry.find(vin.prevout);
+    auto it1 = mWeAskedForMasternodeListEntry.find(vin.prevout);
     if (it1 != mWeAskedForMasternodeListEntry.end()) {
-        std::map<CNetAddr, int64_t>::iterator it2 = it1->second.find(pnode->addr);
+        auto it2 = it1->second.find(pnode->addr);
         if (it2 != it1->second.end()) {
             if (GetTime() < it2->second) {
                 // we've asked recently, should not repeat too often or we could get banned
@@ -269,7 +269,7 @@ void CMasternodeMan::CheckAndRemove()
         Check();
 
         // Remove spent masternodes, prepare structures and make requests to reasure the state of inactive ones
-        std::vector<CMasternode>::iterator it = vMasternodes.begin();
+        auto it = vMasternodes.begin();
         std::vector<std::pair<int, CMasternode> > vecMasternodeRanks;
         // ask for up to MNB_RECOVERY_MAX_ASK_ENTRIES masternode entries at a time
         int nAskForMnbRecovery = MNB_RECOVERY_MAX_ASK_ENTRIES;
@@ -326,7 +326,7 @@ void CMasternodeMan::CheckAndRemove()
 
         // proces replies for MASTERNODE_NEW_START_REQUIRED masternodes
         LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- mMnbRecoveryGoodReplies size=%d\n", (int)mMnbRecoveryGoodReplies.size());
-        std::map<uint256, std::vector<CMasternodeBroadcast> >::iterator itMnbReplies = mMnbRecoveryGoodReplies.begin();
+        auto itMnbReplies = mMnbRecoveryGoodReplies.begin();
         while(itMnbReplies != mMnbRecoveryGoodReplies.end()){
             if(mMnbRecoveryRequests[itMnbReplies->first].first < GetTime()) {
                 // all nodes we asked should have replied now
@@ -349,7 +349,7 @@ void CMasternodeMan::CheckAndRemove()
         // no need for cm_main below
         LOCK(cs);
 
-        std::map<uint256, std::pair< int64_t, std::set<CNetAddr> > >::iterator itMnbRequest = mMnbRecoveryRequests.begin();
+        auto itMnbRequest = mMnbRecoveryRequests.begin();
         while(itMnbRequest != mMnbRecoveryRequests.end()){
             // Allow this mnb to be re-verified again after MNB_RECOVERY_RETRY_SECONDS seconds
             // if mn is still in MASTERNODE_NEW_START_REQUIRED state.
@@ -361,7 +361,7 @@ void CMasternodeMan::CheckAndRemove()
         }
 
         // check who's asked for the Masternode list
-        std::map<CNetAddr, int64_t>::iterator it1 = mAskedUsForMasternodeList.begin();
+        auto it1 = mAskedUsForMasternodeList.begin();
         while(it1 != mAskedUsForMasternodeList.end()){
             if((*it1).second < GetTime()) {
                 mAskedUsForMasternodeList.erase(it1++);
@@ -381,9 +381,9 @@ void CMasternodeMan::CheckAndRemove()
         }
 
         // check which Masternodes we've asked for
-        std::map<COutPoint, std::map<CNetAddr, int64_t> >::iterator it2 = mWeAskedForMasternodeListEntry.begin();
+        auto it2 = mWeAskedForMasternodeListEntry.begin();
         while(it2 != mWeAskedForMasternodeListEntry.end()){
-            std::map<CNetAddr, int64_t>::iterator it3 = it2->second.begin();
+            auto it3 = it2->second.begin();
             while(it3 != it2->second.end()){
                 if(it3->second < GetTime()){
                     it2->second.erase(it3++);
@@ -398,7 +398,7 @@ void CMasternodeMan::CheckAndRemove()
             }
         }
 
-        std::map<CNetAddr, CMasternodeVerification>::iterator it3 = mWeAskedForVerification.begin();
+        auto it3 = mWeAskedForVerification.begin();
         while(it3 != mWeAskedForVerification.end()){
             if(it3->second.nBlockHeight < pCurrentBlockIndex->nHeight - MAX_POSE_BLOCKS) {
                 mWeAskedForVerification.erase(it3++);
@@ -410,7 +410,7 @@ void CMasternodeMan::CheckAndRemove()
         // NOTE: do not expire mapSeenMasternodeBroadcast entries here, clean them on mnb updates!
 
         // remove expired mapSeenMasternodePing
-        std::map<uint256, CMasternodePing>::iterator it4 = mapSeenMasternodePing.begin();
+        auto it4 = mapSeenMasternodePing.begin();
         while(it4 != mapSeenMasternodePing.end()){
             if((*it4).second.IsExpired()) {
                 LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Removing expired Masternode ping: hash=%s\n", (*it4).second.GetHash().ToString());
@@ -421,7 +421,7 @@ void CMasternodeMan::CheckAndRemove()
         }
 
         // remove expired mapSeenMasternodeVerification
-        std::map<uint256, CMasternodeVerification>::iterator itv2 = mapSeenMasternodeVerification.begin();
+        auto itv2 = mapSeenMasternodeVerification.begin();
         while(itv2 != mapSeenMasternodeVerification.end()){
             if((*itv2).second.nBlockHeight < pCurrentBlockIndex->nHeight - MAX_POSE_BLOCKS){
                 LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Removing expired Masternode verification: hash=%s\n", (*itv2).first.ToString());
@@ -509,7 +509,7 @@ void CMasternodeMan::DsegUpdate(CNode* pnode)
 
     if(Params().NetworkIDString() == CBaseChainParams::MAIN) {
         if(!(pnode->addr.IsRFC1918() || pnode->addr.IsLocal())) {
-            std::map<CNetAddr, int64_t>::iterator it = mWeAskedForMasternodeList.find(pnode->addr);
+            auto it = mWeAskedForMasternodeList.find(pnode->addr);
             if(it != mWeAskedForMasternodeList.end() && GetTime() < (*it).second) {
                 LogPrintf("CMasternodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
                 return;
@@ -865,7 +865,7 @@ std::pair<CService, std::set<uint256> > CMasternodeMan::PopScheduledMnbRequestCo
     std::pair<CService, uint256> pairFront = listScheduledMnbRequestConnections.front();
 
     // squash hashes from requests with the same CService as the first one into setResult
-    std::list< std::pair<CService, uint256> >::iterator it = listScheduledMnbRequestConnections.begin();
+    auto it = listScheduledMnbRequestConnections.begin();
     while(it != listScheduledMnbRequestConnections.end()) {
         if(pairFront.first == it->first) {
             setResult.insert(it->second);
@@ -982,7 +982,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
 
             if(!isLocal && Params().NetworkIDString() == CBaseChainParams::MAIN) {
-                std::map<CNetAddr, int64_t>::iterator i = mAskedUsForMasternodeList.find(pfrom->addr);
+                auto i = mAskedUsForMasternodeList.find(pfrom->addr);
                 if (i != mAskedUsForMasternodeList.end()){
                     int64_t t = (*i).second;
                     if (GetTime() < t) {
@@ -1068,7 +1068,7 @@ void CMasternodeMan::DoFullVerificationStep()
     int nRanksTotal = (int)vecMasternodeRanks.size();
 
     // send verify requests only if we are in top MAX_POSE_RANK
-    std::vector<std::pair<int, CMasternode> >::iterator it = vecMasternodeRanks.begin();
+    auto it = vecMasternodeRanks.begin();
     while(it != vecMasternodeRanks.end()) {
         if(it->first > MAX_POSE_RANK) {
             LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Must be in top %d to send verify request\n",
@@ -1290,7 +1290,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
 
         CMasternode* prealMasternode = NULL;
         std::vector<CMasternode*> vpMasternodesToBan;
-        std::vector<CMasternode>::iterator it = vMasternodes.begin();
+        auto it = vMasternodes.begin();
         std::string strMessage1 = strprintf("%s%d%s", pnode->addr.ToString(false), mnv.nonce, blockHash.ToString());
         while(it != vMasternodes.end()) {
             if((CAddress)it->addr == pnode->addr) {

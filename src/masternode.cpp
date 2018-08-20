@@ -739,8 +739,8 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
     GetTransaction(vin.prevout.hash, tx2, Params().GetConsensus(), hashBlock, true);
     {
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
-        if (mi != mapBlockIndex.end() && (*mi).second) {
+        auto mi = mapBlockIndex.find(hashBlock);
+        if (mi != end(mapBlockIndex) && (*mi).second) {
             CBlockIndex* pMNIndex = (*mi).second; // block for 10000 UT tx -> 1 confirmation
             CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + Params().GetConsensus().nMasternodeMinimumConfirmations - 1]; // block where tx got nMasternodeMinimumConfirmations
             if(pConfIndex->GetBlockTime() > sigTime) {
@@ -977,7 +977,7 @@ bool CMasternodePing::SimpleCheck(int& nDos)
 
     {
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(blockHash);
+        auto mi = mapBlockIndex.find(blockHash);
         if (mi == mapBlockIndex.end()) {
             LogPrint("masternode", "CMasternodePing::SimpleCheck -- Masternode ping is invalid, unknown block hash: masternode=%s blockHash=%s\n", vin.prevout.ToStringShort(), blockHash.ToString());
             // maybe we stuck or forked so we shouldn't ban this node, just fail to accept this ping
@@ -1017,7 +1017,7 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
 
     {
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(blockHash);
+        auto mi = mapBlockIndex.find(blockHash);
         if ((*mi).second && (*mi).second->nHeight < chainActive.Height() - 24) {
             LogPrintf("CMasternodePing::CheckAndUpdate -- Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s\n", vin.prevout.ToStringShort(), blockHash.ToString());
             // nDos = 1;
@@ -1075,10 +1075,9 @@ void CMasternode::AddGovernanceVote(uint256 nGovernanceObjectHash)
 
 void CMasternode::RemoveGovernanceObject(uint256 nGovernanceObjectHash)
 {
-    std::map<uint256, int>::iterator it = mapGovernanceObjectsVotedOn.find(nGovernanceObjectHash);
-    if(it == mapGovernanceObjectsVotedOn.end()) {
+    auto it = mapGovernanceObjectsVotedOn.find(nGovernanceObjectHash);
+    if (it == end(mapGovernanceObjectsVotedOn))
         return;
-    }
     mapGovernanceObjectsVotedOn.erase(it);
 }
 
@@ -1098,11 +1097,8 @@ void CMasternode::FlagGovernanceItemsAsDirty()
 {
     std::vector<uint256> vecDirty;
     {
-        std::map<uint256, int>::iterator it = mapGovernanceObjectsVotedOn.begin();
-        while(it != mapGovernanceObjectsVotedOn.end()) {
+        for (auto it =  begin(mapGovernanceObjectsVotedOn); it != end(mapGovernanceObjectsVotedOn); ++it)
             vecDirty.push_back(it->first);
-            ++it;
-        }
     }
     for(size_t i = 0; i < vecDirty.size(); ++i) {
         mnodeman.AddDirtyGovernanceObjectHash(vecDirty[i]);
