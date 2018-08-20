@@ -32,25 +32,12 @@ extern CMasternodeCenter mnodecenter;
  */
 class CMasternodeIndex
 {
-public: // Types
-    typedef std::map<CTxIn,int> index_m_t;
-
-    typedef index_m_t::iterator index_m_it;
-
-    typedef index_m_t::const_iterator index_m_cit;
-
-    typedef std::map<int,CTxIn> rindex_m_t;
-
-    typedef rindex_m_t::iterator rindex_m_it;
-
-    typedef rindex_m_t::const_iterator rindex_m_cit;
-
 private:
     int                  nSize;
 
-    index_m_t            mapIndex;
+    std::map<CTxIn, int> mapIndex;
 
-    rindex_m_t           mapReverseIndex;
+    std::map<int, CTxIn> mapReverseIndex;
 
 public:
     CMasternodeIndex();
@@ -87,13 +74,6 @@ private:
 
 class CMasternodeMan
 {
-public:
-    typedef std::map<CTxIn,int> index_m_t;
-
-    typedef index_m_t::iterator index_m_it;
-
-    typedef index_m_t::const_iterator index_m_cit;
-
 private:
     static const int MAX_EXPECTED_INDEX_SIZE = 30000;
 

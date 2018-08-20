@@ -51,29 +51,27 @@ CMasternodeIndex::CMasternodeIndex()
 
 bool CMasternodeIndex::Get(int nIndex, CTxIn& vinMasternode) const
 {
-    rindex_m_cit it = mapReverseIndex.find(nIndex);
-    if(it == mapReverseIndex.end()) {
+    auto it = mapReverseIndex.find(nIndex);
+    if (it == mapReverseIndex.end())
         return false;
-    }
     vinMasternode = it->second;
     return true;
 }
 
 int CMasternodeIndex::GetMasternodeIndex(const CTxIn& vinMasternode) const
 {
-    index_m_cit it = mapIndex.find(vinMasternode);
-    if(it == mapIndex.end()) {
+    auto it = mapIndex.find(vinMasternode);
+    if (it == mapIndex.end())
         return -1;
-    }
     return it->second;
 }
 
 void CMasternodeIndex::AddMasternodeVIN(const CTxIn& vinMasternode)
 {
-    index_m_it it = mapIndex.find(vinMasternode);
-    if(it != mapIndex.end()) {
+    auto it = mapIndex.find(vinMasternode);
+    if (it != mapIndex.end())
         return;
-    }
+
     int nNextIndex = nSize;
     mapIndex[vinMasternode] = nNextIndex;
     mapReverseIndex[nNextIndex] = vinMasternode;
@@ -99,9 +97,8 @@ struct CompareByAddr
 void CMasternodeIndex::RebuildIndex()
 {
     nSize = mapIndex.size();
-    for(index_m_it it = mapIndex.begin(); it != mapIndex.end(); ++it) {
+    for (auto it = begin(mapIndex); it != end(mapIndex); ++it)
         mapReverseIndex[it->second] = it->first;
-    }
 }
 
 void showbuf(const char * buf, int len)
