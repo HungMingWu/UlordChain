@@ -35,7 +35,6 @@
 #endif
 
 #include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <boost/scoped_ptr.hpp>
 
 /** Maximum size of http request (request line + headers) */
 static const size_t MAX_HEADERS_SIZE = 8192;
@@ -53,7 +52,7 @@ public:
         func(req.get(), path);
     }
 
-    boost::scoped_ptr<HTTPRequest> req;
+    std::unique_ptr<HTTPRequest> req;
 
 private:
     std::string path;

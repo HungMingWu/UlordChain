@@ -6,7 +6,6 @@
 #include "coins.h"
 #include "hash.h"
 
-#include <boost/scoped_ptr.hpp>
 #include <iostream>
 #include <algorithm>
 
@@ -153,7 +152,7 @@ bool CClaimTrie::empty() const
 
 template<typename K> bool CClaimTrie::keyTypeEmpty(char keyType, K& dummy) const
 {
-    boost::scoped_ptr<CDBIterator> pcursor(const_cast<CDBWrapper*>(&db)->NewIterator());
+    std::unique_ptr<CDBIterator> pcursor(const_cast<CDBWrapper*>(&db)->NewIterator());
     pcursor->SeekToFirst();
     
     while (pcursor->Valid())
@@ -1132,7 +1131,7 @@ bool CClaimTrie::ReadFromDisk(bool check)
         LogPrintf("%s: Couldn't read the best block's hash\n", __func__);
     if (!db.Read(CURRENT_HEIGHT, nCurrentHeight))
         LogPrintf("%s: Couldn't read the current height\n", __func__);
-    boost::scoped_ptr<CDBIterator> pcursor(const_cast<CDBWrapper*>(&db)->NewIterator());
+    std::unique_ptr<CDBIterator> pcursor(const_cast<CDBWrapper*>(&db)->NewIterator());
     pcursor->SeekToFirst();
     
     while (pcursor->Valid())
