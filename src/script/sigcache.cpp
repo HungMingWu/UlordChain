@@ -12,7 +12,7 @@
 #include "util.h"
 
 #include <boost/thread.hpp>
-#include <boost/unordered_set.hpp>
+#include <unordered_set>
 
 namespace {
 
@@ -38,7 +38,7 @@ class CSignatureCache
 private:
      //! Entries are SHA256(nonce || signature hash || public key || signature):
     uint256 nonce;
-    typedef boost::unordered_set<uint256, CSignatureCacheHasher> map_type;
+    typedef std::unordered_set<uint256, CSignatureCacheHasher> map_type;
     map_type setValid;
     boost::shared_mutex cs_sigcache;
 
