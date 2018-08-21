@@ -88,8 +88,8 @@ void CMasternodeIndex::Clear()
 struct CompareByAddr
 
 {
-    bool operator()(const CMasternode* t1,
-                    const CMasternode* t2) const
+    bool operator()(const CMasternodePtr t1,
+                    const CMasternodePtr t2) const
     {
         return t1->addr < t2->addr;
     }
@@ -1061,20 +1061,18 @@ void CMasternodeMan::DoFullVerificationStep()
     int nRanksTotal = (int)vecMasternodeRanks.size();
 
     // send verify requests only if we are in top MAX_POSE_RANK
-    auto it = vecMasternodeRanks.begin();
-    while(it != vecMasternodeRanks.end()) {
-        if(it->first > MAX_POSE_RANK) {
+    for (const auto &rank : vecMasternodeRanks) {
+        if (rank.first > MAX_POSE_RANK) {
             LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Must be in top %d to send verify request\n",
                         (int)MAX_POSE_RANK);
             return;
         }
-        if(it->second.vin == activeMasternode.vin) {
-            nMyRank = it->first;
+        if (rank.second.vin == activeMasternode.vin) {
+            nMyRank = rank.first;
             LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Found self at rank %d/%d, verifying up to %d masternodes\n",
                         nMyRank, nRanksTotal, nCountMax);
             break;
         }
-        ++it;
     }
 
     // edge case: list is too short and this masternode is not enabled
@@ -1085,31 +1083,28 @@ void CMasternodeMan::DoFullVerificationStep()
     int nOffset = MAX_POSE_RANK + nCountMax * (nMyRank - 1);
     if(nOffset >= (int)vecMasternodeRanks.size()) return;
 
-    std::vector<CMasternode*> vSortedByAddr;
+    std::vector<CMasternodePtr> vSortedByAddr;
     for (CMasternode& mn : vMasternodes) {
-        vSortedByAddr.push_back(&mn);
+        vSortedByAddr.push_back(CMasternodePtr{&mn});
     }
 
     sort(vSortedByAddr.begin(), vSortedByAddr.end(), CompareByAddr());
 
-    it = vecMasternodeRanks.begin() + nOffset;
-    while(it != vecMasternodeRanks.end()) {
-        if(it->second.IsPoSeVerified() || it->second.IsPoSeBanned()) {
+    for (auto &rank : boost::make_iterator_range(begin(vecMasternodeRanks) + nOffset, end(vecMasternodeRanks))) {
+        if (rank.second.IsPoSeVerified() || rank.second.IsPoSeBanned()) {
             LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Already %s%s%s masternode %s address %s, skipping...\n",
-                        it->second.IsPoSeVerified() ? "verified" : "",
-                        it->second.IsPoSeVerified() && it->second.IsPoSeBanned() ? " and " : "",
-                        it->second.IsPoSeBanned() ? "banned" : "",
-                        it->second.vin.prevout.ToStringShort(), it->second.addr.ToString());
-            ++it;
+                        rank.second.IsPoSeVerified() ? "verified" : "",
+                        rank.second.IsPoSeVerified() && rank.second.IsPoSeBanned() ? " and " : "",
+                        rank.second.IsPoSeBanned() ? "banned" : "",
+                        rank.second.vin.prevout.ToStringShort(), rank.second.addr.ToString());
             continue;
         }
         LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Verifying masternode %s rank %d/%d address %s\n",
-                    it->second.vin.prevout.ToStringShort(), it->first, nRanksTotal, it->second.addr.ToString());
-        if(SendVerifyRequest((CAddress)it->second.addr, vSortedByAddr)) {
+                    rank.second.vin.prevout.ToStringShort(), rank.first, nRanksTotal, rank.second.addr.ToString());
+        if (SendVerifyRequest((CAddress)rank.second.addr, vSortedByAddr)) {
             nCount++;
             if(nCount >= nCountMax) break;
         }
-        ++it;
     }
 
     LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Sent verification requests to %d masternodes\n", nCount);
@@ -1124,22 +1119,22 @@ void CMasternodeMan::CheckSameAddr()
 {
     if(!masternodeSync.IsSynced() || vMasternodes.empty()) return;
 
-    std::vector<CMasternode*> vBan;
-    std::vector<CMasternode*> vSortedByAddr;
+    std::vector<CMasternodePtr> vBan;
+    std::vector<CMasternodePtr> vSortedByAddr;
 
     {
         LOCK(cs);
 
-        CMasternode* pprevMasternode = NULL;
-        CMasternode* pverifiedMasternode = NULL;
+        CMasternodePtr pprevMasternode;
+        CMasternodePtr pverifiedMasternode;
 
         for (CMasternode& mn : vMasternodes) {
-            vSortedByAddr.push_back(&mn);
+            vSortedByAddr.push_back(CMasternodePtr{&mn});
         }
 
         sort(vSortedByAddr.begin(), vSortedByAddr.end(), CompareByAddr());
 
-        for (CMasternode* pmn : vSortedByAddr) {
+        for (auto &pmn : vSortedByAddr) {
             // check only (pre)enabled masternodes
             if(!pmn->IsEnabled() && !pmn->IsPreEnabled()) continue;
             // initial step
@@ -1167,13 +1162,13 @@ void CMasternodeMan::CheckSameAddr()
     }
 
     // ban duplicates
-    for (CMasternode* pmn : vBan) {
+    for (auto &pmn : vBan) {
         LogPrintf("CMasternodeMan::CheckSameAddr -- increasing PoSe ban score for masternode %s\n", pmn->vin.prevout.ToStringShort());
         pmn->IncreasePoSeBanScore();
     }
 }
 
-bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<CMasternode*>& vSortedByAddr)
+bool CMasternodeMan::SendVerifyRequest(const CAddress& addr, const std::vector<CMasternodePtr>& vSortedByAddr)
 {
     if(netfulfilledman.HasFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request")) {
         // we already asked for verification, not a good idea to do this too often, skip it
@@ -1281,25 +1276,24 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
     {
         LOCK(cs);
 
-        CMasternode* prealMasternode = NULL;
-        std::vector<CMasternode*> vpMasternodesToBan;
-        auto it = vMasternodes.begin();
+        CMasternodePtr prealMasternode;
+        std::vector<CMasternodePtr> vpMasternodesToBan;
         std::string strMessage1 = strprintf("%s%d%s", pnode->addr.ToString(false), mnv.nonce, blockHash.ToString());
-        while(it != vMasternodes.end()) {
-            if((CAddress)it->addr == pnode->addr) {
-                if(privSendSigner.VerifyMessage(it->pubKeyMasternode, mnv.vchSig1, strMessage1, strError)) {
+        for (auto &node : vMasternodes) {
+            if((CAddress)node.addr == pnode->addr) {
+                if(privSendSigner.VerifyMessage(node.pubKeyMasternode, mnv.vchSig1, strMessage1, strError)) {
                     // found it!
-                    prealMasternode = &(*it);
-                    if(!it->IsPoSeVerified()) {
-                        it->DecreasePoSeBanScore();
-                    }
+                    prealMasternode = CMasternodePtr{&node};
+                    if (!node.IsPoSeVerified())
+                        node.DecreasePoSeBanScore();
+
                     netfulfilledman.AddFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-done");
 
                     // we can only broadcast it if we are an activated masternode
                     if(activeMasternode.vin == CTxIn()) continue;
                     // update ...
-                    mnv.addr = it->addr;
-                    mnv.vin1 = it->vin;
+                    mnv.addr = node.addr;
+                    mnv.vin1 = node.vin;
                     mnv.vin2 = activeMasternode.vin;
                     std::string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash.ToString(),
                                             mnv.vin1.prevout.ToStringShort(), mnv.vin2.prevout.ToStringShort());
@@ -1320,10 +1314,9 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
                     mnv.Relay();
 
                 } else {
-                    vpMasternodesToBan.push_back(&(*it));
+                    vpMasternodesToBan.push_back(CMasternodePtr{&node});
                 }
             }
-            ++it;
         }
         // no real masternode found?...
         if(!prealMasternode) {
@@ -1336,7 +1329,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
         LogPrintf("CMasternodeMan::ProcessVerifyReply -- verified real masternode %s for addr %s\n",
                     prealMasternode->vin.prevout.ToStringShort(), pnode->addr.ToString());
         // increase ban score for everyone else
-        for (CMasternode* pmn : vpMasternodesToBan) {
+        for (auto &pmn : vpMasternodesToBan) {
             pmn->IncreasePoSeBanScore();
             LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
                         prealMasternode->vin.prevout.ToStringShort(), pnode->addr.ToString(), pmn->nPoSeBanScore);

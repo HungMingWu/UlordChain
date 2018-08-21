@@ -293,7 +293,7 @@ public:
 
     void DoFullVerificationStep();
     void CheckSameAddr();
-    bool SendVerifyRequest(const CAddress& addr, const std::vector<CMasternode*>& vSortedByAddr);
+    bool SendVerifyRequest(const CAddress& addr, const std::vector<CMasternodePtr>& vSortedByAddr);
     void SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv);
     void ProcessVerifyReply(CNode* pnode, CMasternodeVerification& mnv);
     void ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerification& mnv);
