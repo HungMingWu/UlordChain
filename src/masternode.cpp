@@ -15,7 +15,7 @@
 #include "masternodeconfig.h"
 
 #include <boost/lexical_cast.hpp>
-
+#include <system_error>
 
 CMasternode::CMasternode() :
     vin(),
@@ -477,83 +477,150 @@ CTxDestination CMasternode::GetPayeeDestination()
 }
 
 #ifdef ENABLE_WALLET
-bool CMasternodeBroadcast::Create(std::string strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline)
+enum class CMasternodeBroadcastErrorc {
+	SyncInProgress = 1,
+	InvalidKey = 2,
+	AllocCoinFail = 3,
+	InvalidPort = 4,
+	Import = 5,
+	Reindex = 6,
+	SignPingFail = 7,
+	InvalidAddr = 8,
+	SignBroadFail = 9,
+};
+
+namespace std
+{
+  // Tell the C++ 11 STL metaprogramming that enum ConversionErrc
+  // is registered with the standard error code system
+  template <> struct is_error_code_enum<CMasternodeBroadcastErrorc> : std::true_type
+  {
+  };
+}
+
+namespace detail
+{
+  // Define a custom error code category derived from std::error_category
+  class CMasternodeBroadcastErrorc_category : public std::error_category
+  {
+  public:
+    // Return a short descriptive name for the category
+    const char *name() const noexcept override final { return " CMasternodeBroadcastError"; }
+    // Return what each enum means in text
+    std::string message(int c) const override final
+    {
+      switch (static_cast<CMasternodeBroadcastErrorc>(c))
+      {
+      case CMasternodeBroadcastErrorc::SyncInProgress:
+        return "Sync in progress. Must wait until sync is complete to start Masternode";
+      case CMasternodeBroadcastErrorc::InvalidKey:
+	return "Invalid masternode key";
+      case CMasternodeBroadcastErrorc::AllocCoinFail:
+	return "Could not allocate txin";
+      case CMasternodeBroadcastErrorc::InvalidPort:
+        return "Invalid port";
+      case CMasternodeBroadcastErrorc::Import:
+	return "Importing";
+      case CMasternodeBroadcastErrorc::Reindex:
+	return "Reindex";
+      case CMasternodeBroadcastErrorc::SignPingFail:
+	return "Failed to sign ping";
+      case CMasternodeBroadcastErrorc::InvalidAddr:
+	return "Invalid IP address";
+      case CMasternodeBroadcastErrorc::SignBroadFail:
+	return "Failed to sign broadcast";
+      default:
+        return "unknown";
+      }
+    }
+  };
+}
+
+// Overload the global make_error_code() free function with our
+// custom enum. It will be found via ADL by the compiler if needed.
+static std::error_code make_error_code(CMasternodeBroadcastErrorc e)
+{
+    static detail::CMasternodeBroadcastErrorc_category c;
+    return {static_cast<int>(e), c};
+}
+
+outcome::result<CMasternodeBroadcast> CMasternodeBroadcast::Create(const std::string &strService, std::string strKeyMasternode, std::string strTxHash, std::string strOutputIndex, bool fOffline)
 {
     CTxIn txin;
     CPubKey pubKeyMasternodeNew;
     CKey keyMasternodeNew;
+    std::string strErrorRet;
 
     //need correct blocks to send ping
-    if(!fOffline && !masternodeSync.IsBlockchainSynced()) {
+    if (!fOffline && !masternodeSync.IsBlockchainSynced()) {
         strErrorRet = "Sync in progress. Must wait until sync is complete to start Masternode";
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::SyncInProgress);
     }
 
-    if(!privSendSigner.GetKeysFromSecret(strKeyMasternode, keyMasternodeNew, pubKeyMasternodeNew)) {
+    if (!privSendSigner.GetKeysFromSecret(strKeyMasternode, keyMasternodeNew, pubKeyMasternodeNew)) {
         strErrorRet = strprintf("Invalid masternode key %s", strKeyMasternode);
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::InvalidKey);
     }
 
-    if(!masternodeConfig.GetMasternodeVin(txin, strTxHash, strOutputIndex)){
+    if (!masternodeConfig.GetMasternodeVin(txin, strTxHash, strOutputIndex)){
         strErrorRet = strprintf("Could not allocate txin %s:%s for masternode %s", strTxHash, strOutputIndex, strService);
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::AllocCoinFail);
     }
 
     CService service = CService(strService);
     int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
     if(Params().NetworkIDString() == CBaseChainParams::MAIN) {
-        if(service.GetPort() != mainnetDefaultPort) {
+        if (service.GetPort() != mainnetDefaultPort) {
             strErrorRet = strprintf("Invalid port %u for masternode %s, only %d is supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort);
             LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-            return false;
+            return make_error_code(CMasternodeBroadcastErrorc::InvalidPort);
         }
     } else if (service.GetPort() == mainnetDefaultPort) {
         strErrorRet = strprintf("Invalid port %u for masternode %s, %d is the only supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort);
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::InvalidPort);
     }
 
-    return Create(txin, CService(strService),  keyMasternodeNew, pubKeyMasternodeNew, strErrorRet, mnbRet);
+    return Create(txin, CService(strService),  keyMasternodeNew, pubKeyMasternodeNew);
 }
 
-bool CMasternodeBroadcast::Create(CTxIn txin, CService service,  CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew, std::string &strErrorRet, CMasternodeBroadcast &mnbRet)
+outcome::result<CMasternodeBroadcast> CMasternodeBroadcast::Create(CTxIn txin, CService service,  CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew)
 {
     // wait for reindex and/or import to finish
-    if (fImporting || fReindex) return false;
+    if (fImporting) return make_error_code(CMasternodeBroadcastErrorc::Import);
+    if (fReindex) return make_error_code(CMasternodeBroadcastErrorc::Reindex);
 
-   LogPrint("masternode", "CMasternodeBroadcast::Create --  pubKeyMasternodeNew.GetID() = %s\n",
+    LogPrint("masternode", "CMasternodeBroadcast::Create --  pubKeyMasternodeNew.GetID() = %s\n",
              pubKeyMasternodeNew.GetID().ToString());
-   CPubKey pubKeyCollateralAddressNew; //  pubKeyCollateralAddressNew   is null
+    CPubKey pubKeyCollateralAddressNew; //  pubKeyCollateralAddressNew   is null
 
+    std::string strErrorRet;
     CMasternodePing mnp(txin);
-    if(!mnp.Sign(keyMasternodeNew, pubKeyMasternodeNew)) {
+    if (!mnp.Sign(keyMasternodeNew, pubKeyMasternodeNew)) {
         strErrorRet = strprintf("Failed to sign ping, masternode=%s", txin.prevout.ToStringShort());
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        mnbRet = CMasternodeBroadcast();
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::SignPingFail);
     }
 
-    mnbRet = CMasternodeBroadcast(service, txin, pubKeyCollateralAddressNew, pubKeyMasternodeNew, PROTOCOL_VERSION);
+    CMasternodeBroadcast mnbRet = CMasternodeBroadcast(service, txin, pubKeyCollateralAddressNew, pubKeyMasternodeNew, PROTOCOL_VERSION);
 
-    if(!mnbRet.IsValidNetAddr()) {
+    if (!mnbRet.IsValidNetAddr()) {
         strErrorRet = strprintf("Invalid IP address, masternode=%s", txin.prevout.ToStringShort());
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        mnbRet = CMasternodeBroadcast();
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::InvalidAddr);
     }
 
     mnbRet.lastPing = mnp;
-    if(!mnbRet.Sign()) {
+    if (!mnbRet.Sign()) {
         strErrorRet = strprintf("Failed to sign broadcast, masternode=%s", txin.prevout.ToStringShort());
         LogPrintf("CMasternodeBroadcast::Create -- %s\n", strErrorRet);
-        mnbRet = CMasternodeBroadcast();
-        return false;
+        return make_error_code(CMasternodeBroadcastErrorc::SignBroadFail);
     }
 
-    return true;
+    return mnbRet;
 }
 #endif // ENABLE_WALLET
 

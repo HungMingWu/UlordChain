@@ -97,18 +97,16 @@ void MasternodeList::StartAlias(std::string strAlias)
 
     for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
         if(mne.getAlias() == strAlias) {
-            std::string strError;
-            CMasternodeBroadcast mnb;
 
-            bool fSuccess = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+            auto ret = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex());
 
-            if(fSuccess) {
+            if (ret.has_value()) {
                 strStatusHtml += "<br>Successfully started masternode.";
-                mnodeman.UpdateMasternodeList(mnb);
-                mnb.Relay();
+                mnodeman.UpdateMasternodeList(ret.value());
+                ret.value().Relay();
                 mnodeman.NotifyMasternodeUpdates();
             } else {
-                strStatusHtml += "<br>Failed to start masternode.<br>Error: " + strError;
+                strStatusHtml += "<br>Failed to start masternode.<br>Error: " + ret.error().message();;
             }
             break;
         }
@@ -129,24 +127,22 @@ void MasternodeList::StartAll(std::string strCommand)
     std::string strFailedHtml;
 
     for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
-        std::string strError;
-        CMasternodeBroadcast mnb;
 
         CTxIn txin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
         CMasternodePtr pmn = mnodeman.Find(txin);
 
         if(strCommand == "start-missing" && pmn) continue;
 
-        bool fSuccess = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+        auto ret = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex());
 
-        if(fSuccess) {
+        if (ret.has_value()) {
             nCountSuccessful++;
-            mnodeman.UpdateMasternodeList(mnb);
-            mnb.Relay();
+            mnodeman.UpdateMasternodeList(ret.value());
+            ret.value().Relay();
             mnodeman.NotifyMasternodeUpdates();
         } else {
             nCountFailed++;
-            strFailedHtml += "\nFailed to start " + mne.getAlias() + ". Error: " + strError;
+            strFailedHtml += "\nFailed to start " + mne.getAlias() + ". Error: " + ret.error().message();;
         }
     }
     pwalletMain->Lock();

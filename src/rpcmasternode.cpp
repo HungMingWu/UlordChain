@@ -259,17 +259,15 @@ UniValue masternode(const UniValue& params, bool fHelp)
         for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
-                std::string strError;
-                CMasternodeBroadcast mnb;
 
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+                auto ret = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex());
 
-                statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
-                if(fResult) {
-                    mnodeman.UpdateMasternodeList(mnb);
-                    mnb.Relay();
+                statusObj.push_back(Pair("result", ret.has_value() ? "successful" : "failed"));
+                if (ret.has_value()) {
+                    mnodeman.UpdateMasternodeList(ret.value());
+                    ret.value().Relay();
                 } else {
-                    statusObj.push_back(Pair("errorMessage", strError));
+                    statusObj.push_back(Pair("errorMessage", ret.error().message()));
                 }
                 mnodeman.NotifyMasternodeUpdates();
                 break;
@@ -302,28 +300,26 @@ UniValue masternode(const UniValue& params, bool fHelp)
         UniValue resultsObj(UniValue::VOBJ);
 
         for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
-            std::string strError;
 
             CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternodePtr pmn = mnodeman.Find(vin);
-            CMasternodeBroadcast mnb;
 
             if(strCommand == "start-missing" && pmn) continue;
             if(strCommand == "start-disabled" && pmn && pmn->IsEnabled()) continue;
 
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+            auto ret = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex());
 
             UniValue statusObj(UniValue::VOBJ);
             statusObj.push_back(Pair("alias", mne.getAlias()));
-            statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
+            statusObj.push_back(Pair("result", ret.has_value() ? "successful" : "failed"));
 
-            if (fResult) {
+            if (ret.has_value()) {
                 nSuccessful++;
-                mnodeman.UpdateMasternodeList(mnb);
-                mnb.Relay();
+                mnodeman.UpdateMasternodeList(ret.value());
+                ret.value().Relay();
             } else {
                 nFailed++;
-                statusObj.push_back(Pair("errorMessage", strError));
+                statusObj.push_back(Pair("errorMessage", ret.error().message()));
             }
 
             resultsObj.push_back(Pair("status", statusObj));
@@ -650,19 +646,17 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             if(mne.getAlias() == strAlias) {
                 fFound = true;
-                std::string strError;
-                CMasternodeBroadcast mnb;
 
-                bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb, true);
+                auto ret = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), true);
 
-                statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
-                if(fResult) {
-                    vecMnb.push_back(mnb);
+                statusObj.push_back(Pair("result", ret.has_value() ? "successful" : "failed"));
+                if (ret.has_value()) {
+                    vecMnb.push_back(ret.value());
                     CDataStream ssVecMnb(SER_NETWORK, PROTOCOL_VERSION);
                     ssVecMnb << vecMnb;
                     statusObj.push_back(Pair("hex", HexStr(ssVecMnb.begin(), ssVecMnb.end())));
                 } else {
-                    statusObj.push_back(Pair("errorMessage", strError));
+                    statusObj.push_back(Pair("errorMessage", ret.error().message()));
                 }
                 break;
             }
@@ -698,21 +692,18 @@ UniValue masternodebroadcast(const UniValue& params, bool fHelp)
         std::vector<CMasternodeBroadcast> vecMnb;
 
         for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
-            std::string strError;
-            CMasternodeBroadcast mnb;
-
-            bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb, true);
+            auto ret = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), true);
 
             UniValue statusObj(UniValue::VOBJ);
             statusObj.push_back(Pair("alias", mne.getAlias()));
-            statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
+            statusObj.push_back(Pair("result", ret.has_value() ? "successful" : "failed"));
 
-            if(fResult) {
+            if (ret.has_value()) {
                 nSuccessful++;
-                vecMnb.push_back(mnb);
+                vecMnb.push_back(ret.value());
             } else {
                 nFailed++;
-                statusObj.push_back(Pair("errorMessage", strError));
+                statusObj.push_back(Pair("errorMessage", ret.error().message()));
             }
 
             resultsObj.push_back(Pair("status", statusObj));

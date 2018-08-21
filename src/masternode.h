@@ -12,6 +12,7 @@
 #include "timedata.h"
 #include "base58.h"
 #include "observer_ptr.h"
+#include "outcome.hpp"
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -25,6 +26,8 @@ static const int MASTERNODE_WATCHDOG_MAX_SECONDS        = 120 * 60;
 static const int MASTERNODE_NEW_START_REQUIRED_SECONDS  = 180 * 60;
 
 static const int MASTERNODE_POSE_BAN_MAX_SCORE          = 5;
+
+namespace outcome = OUTCOME_V2_NAMESPACE;
 
 using CMasternodePtr = nonstd::observer_ptr<CMasternode>;//
 // The Masternode Ping Class : Contains a different serialize method for sending pings from masternodes throughout the network
@@ -409,8 +412,8 @@ public:
     }
 
     /// Create Masternode broadcast, needs to be relayed manually after that
-    static bool Create(CTxIn vin, CService service,  CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew, std::string &strErrorRet, CMasternodeBroadcast &mnbRet);
-    static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast &mnbRet, bool fOffline = false);
+    static outcome::result<CMasternodeBroadcast> Create(CTxIn vin, CService service,  CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew);
+    static outcome::result<CMasternodeBroadcast> Create(const std::string &strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, bool fOffline = false);
 
     bool SimpleCheck(int& nDos);
     bool Update(CMasternode* pmn, int& nDos);

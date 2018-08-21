@@ -307,15 +307,15 @@ void CActiveMasternode::ManageStateLocal()
             return;
         }
 
-        CMasternodeBroadcast mnb;
-        std::string strError;
-        if(!CMasternodeBroadcast::Create(vin, service,  keyMasternode, pubKeyMasternode, strError, mnb)) {
+        auto ret = CMasternodeBroadcast::Create(vin, service,  keyMasternode, pubKeyMasternode);
+        if (ret.has_error()) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
-            strNotCapableReason = "Error creating mastenode broadcast: " + strError;
+            strNotCapableReason = "Error creating mastenode broadcast: " + ret.error().message();
             LogPrintf("CActiveMasternode::ManageStateLocal -- %s: %s\n", GetStateString(), strNotCapableReason);
             return;
         }
 
+        auto mnb = ret.value();
         if(!CBitcoinAddress().Set(mnb.GetPayeeDestination())) {
             nState = ACTIVE_MASTERNODE_NOT_CAPABLE;
             strNotCapableReason = "Error Collateral transaction without change address, can't design a payee address!";
