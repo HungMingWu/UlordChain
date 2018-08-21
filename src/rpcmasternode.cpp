@@ -185,7 +185,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
     {
         int nCount;
         int nHeight;
-        CMasternode* winner = NULL;
+        CMasternodePtr winner;
         {
             LOCK(cs_main);
             nHeight = chainActive.Height() + (strCommand == "current" ? 1 : 10);
@@ -305,7 +305,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
             std::string strError;
 
             CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-            CMasternode *pmn = mnodeman.Find(vin);
+            CMasternodePtr pmn = mnodeman.Find(vin);
             CMasternodeBroadcast mnb;
 
             if(strCommand == "start-missing" && pmn) continue;
@@ -351,7 +351,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
             CTxIn vin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-            CMasternode *pmn = mnodeman.Find(vin);
+            CMasternodePtr pmn = mnodeman.Find(vin);
 
             std::string strStatus = pmn ? pmn->GetStatus() : "MISSING";
 

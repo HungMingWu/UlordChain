@@ -63,8 +63,8 @@ void CPrivSendPool::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 
         LogPrint("privatesend", "DSACCEPT -- nDenom %d (%s)  txCollateral %s", nDenom, GetDenominationsToString(nDenom), txCollateral.ToString());
 
-        CMasternode* pmn = mnodeman.Find(activeMasternode.vin);
-        if(pmn == NULL) {
+        CMasternodePtr pmn = mnodeman.Find(activeMasternode.vin);
+        if (pmn == nullptr) {
             PushStatus(pfrom, STATUS_REJECTED, ERR_MN_LIST);
             return;
         }
@@ -115,8 +115,8 @@ void CPrivSendPool::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 
         if(dsq.IsExpired() || dsq.nTime > GetTime() + PRIVATESEND_QUEUE_TIMEOUT) return;
 
-        CMasternode* pmn = mnodeman.Find(dsq.vin);
-        if(pmn == NULL) return;
+        CMasternodePtr pmn = mnodeman.Find(dsq.vin);
+        if (pmn == nullptr) return;
 
         if(!dsq.CheckSignature(pmn->pubKeyMasternode)) {
             // we probably have outdated info
@@ -1518,8 +1518,8 @@ bool CPrivSendPool::DoAutomaticDenominating(bool fDryRun)
 
             if(dsq.IsExpired()) continue;
 
-            CMasternode* pmn = mnodeman.Find(dsq.vin);
-            if(pmn == NULL) {
+            CMasternodePtr pmn = mnodeman.Find(dsq.vin);
+            if (pmn == nullptr) {
                 LogPrintf("CPrivSendPool::DoAutomaticDenominating -- dsq masternode is not in masternode list, masternode=%s\n", dsq.vin.prevout.ToStringShort());
                 continue;
             }
@@ -1574,8 +1574,8 @@ bool CPrivSendPool::DoAutomaticDenominating(bool fDryRun)
 
     // otherwise, try one randomly
     while(nTries < 10) {
-        CMasternode* pmn = mnodeman.FindRandomNotInVec(vecMasternodesUsed, MIN_PRIVATESEND_PEER_PROTO_VERSION);
-        if(pmn == NULL) {
+        CMasternodePtr pmn = mnodeman.FindRandomNotInVec(vecMasternodesUsed, MIN_PRIVATESEND_PEER_PROTO_VERSION);
+        if (pmn == nullptr) {
             LogPrintf("CPrivSendPool::DoAutomaticDenominating -- Can't find random masternode!\n");
             strAutoDenomResult = _("Can't find random Masternode.");
             return false;

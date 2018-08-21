@@ -11,6 +11,7 @@
 #include "masternodeman.h"
 #include "netfulfilledman.h"
 #include "util.h"
+#include "observer_ptr.h"
 
 #include <iostream>
 #include <sstream>
@@ -27,8 +28,8 @@ extern const std::string strMessageMagic;
 
 struct CompareLastPaidBlock
 {
-    bool operator()(const std::pair<int, CMasternode*>& t1,
-                    const std::pair<int, CMasternode*>& t2) const
+    bool operator()(const std::pair<int, CMasternodePtr>& t1,
+                    const std::pair<int, CMasternodePtr>& t2) const
     {
         return (t1.first != t2.first) ? (t1.first < t2.first) : (t1.second->vin < t2.second->vin);
     }
@@ -36,8 +37,8 @@ struct CompareLastPaidBlock
 
 struct CompareScoreMN
 {
-    bool operator()(const std::pair<int64_t, CMasternode*>& t1,
-                    const std::pair<int64_t, CMasternode*>& t2) const
+    bool operator()(const std::pair<int64_t, CMasternodePtr>& t1,
+                    const std::pair<int64_t, CMasternodePtr>& t2) const
     {
         return (t1.first != t2.first) ? (t1.first < t2.first) : (t1.second->vin < t2.second->vin);
     }
@@ -184,9 +185,9 @@ CMasternodeMan::CMasternodeMan()
 bool CMasternodeMan::Add(CMasternode &mn)
 {
     LOCK(cs);
-    CMasternode *pmn = Find(mn.vin);
+    CMasternodePtr pmn = Find(mn.vin);
     //bool bActive = true;
-    if (pmn == NULL) {
+    if (pmn == nullptr) {
         LogPrint("masternode", "CMasternodeMan::Add -- Adding new Masternode: addr=%s, %i now\n", mn.addr.ToString(), size() + 1);
         /*if (sporkManager.IsSporkActive(SPORK_18_REQUIRE_MASTER_VERIFY_FLAG))
         { 
@@ -524,50 +525,49 @@ void CMasternodeMan::DsegUpdate(CNode* pnode)
     LogPrint("masternode", "CMasternodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
 }
 
-CMasternode* CMasternodeMan::Find(const CScript &payee)
+CMasternodePtr CMasternodeMan::Find(const CScript &payee)
 {
     LOCK(cs);
 
     for (CMasternode& mn : vMasternodes)
     {
-        if(GetScriptForDestination(mn.GetPayeeDestination()) == payee)
-            return &mn;
+        if (GetScriptForDestination(mn.GetPayeeDestination()) == payee)
+            return CMasternodePtr{&mn};
     }
-    return NULL;
+    return nullptr;
 }
 
-CMasternode* CMasternodeMan::Find(const CTxIn &vin)
+CMasternodePtr CMasternodeMan::Find(const CTxIn &vin)
 {
     LOCK(cs);
 
     for (CMasternode& mn : vMasternodes)
     {
-        if(mn.vin.prevout == vin.prevout)
-            return &mn;
+        if (mn.vin.prevout == vin.prevout)
+            return CMasternodePtr{&mn};
     }
-    return NULL;
+    return nullptr;
 }
 
-CMasternode* CMasternodeMan::Find(const CPubKey &pubKeyMasternode)
+CMasternodePtr CMasternodeMan::Find(const CPubKey &pubKeyMasternode)
 {
     LOCK(cs);
 
     for (CMasternode& mn : vMasternodes)
     {
-        if(mn.pubKeyMasternode == pubKeyMasternode)
-            return &mn;
+        if (mn.pubKeyMasternode == pubKeyMasternode)
+            return CMasternodePtr{&mn};
     }
-    return NULL;
+    return nullptr;
 }
 
 bool CMasternodeMan::Get(const CPubKey& pubKeyMasternode, CMasternode& masternode)
 {
     // Theses mutexes are recursive so double locking by the same thread is safe.
     LOCK(cs);
-    CMasternode* pMN = Find(pubKeyMasternode);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(pubKeyMasternode);
+    if (!pMN)
         return false;
-    }
     masternode = *pMN;
     return true;
 }
@@ -576,10 +576,9 @@ bool CMasternodeMan::Get(const CTxIn& vin, CMasternode& masternode)
 {
     // Theses mutexes are recursive so double locking by the same thread is safe.
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return false;
-    }
     masternode = *pMN;
     return true;
 }
@@ -587,7 +586,7 @@ bool CMasternodeMan::Get(const CTxIn& vin, CMasternode& masternode)
 boost::optional<masternode_info_t> CMasternodeMan::GetMasternodeInfo(const CTxIn& vin)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
+    CMasternodePtr pMN = Find(vin);
     if (!pMN)
         return {};
     return pMN->GetInfo();
@@ -596,7 +595,7 @@ boost::optional<masternode_info_t> CMasternodeMan::GetMasternodeInfo(const CTxIn
 boost::optional<masternode_info_t> CMasternodeMan::GetMasternodeInfo(const CPubKey& pubKeyMasternode)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(pubKeyMasternode);
+    CMasternodePtr pMN = Find(pubKeyMasternode);
     if (!pMN)
         return {};
     return pMN->GetInfo();
@@ -605,14 +604,14 @@ boost::optional<masternode_info_t> CMasternodeMan::GetMasternodeInfo(const CPubK
 bool CMasternodeMan::Has(const CTxIn& vin)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    return (pMN != NULL);
+    CMasternodePtr pMN = Find(vin);
+    return (pMN != nullptr);
 }
 
 //
 // Deterministically select the oldest/best masternode to pay on the network
 //
-CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(bool fFilterSigTime, int& nCount)
+CMasternodePtr CMasternodeMan::GetNextMasternodeInQueueForPayment(bool fFilterSigTime, int& nCount)
 {
     if(!pCurrentBlockIndex) {
         nCount = 0;
@@ -621,13 +620,13 @@ CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(bool fFilterSigT
     return GetNextMasternodeInQueueForPayment(pCurrentBlockIndex->nHeight, fFilterSigTime, nCount);
 }
 
-CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount)
+CMasternodePtr CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount)
 {
     // Need LOCK2 here to ensure consistent locking order because the GetBlockHash call below locks cs_main
     LOCK2(cs_main,cs);
 
-    CMasternode *pBestMasternode = NULL;
-    std::vector<std::pair<int, CMasternode*> > vecMasternodeLastPaid;
+    CMasternodePtr pBestMasternode;
+    std::vector<std::pair<int, CMasternodePtr>> vecMasternodeLastPaid;
 
     /*
         Make a vector with all of the last paid times
@@ -650,7 +649,7 @@ CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight
         //make sure it has at least as many confirmations as there are masternodes
         if(mn.GetCollateralAge() < nMnCount) continue;
 
-        vecMasternodeLastPaid.push_back(std::make_pair(mn.GetLastPaidBlock(), &mn));
+        vecMasternodeLastPaid.push_back(std::make_pair(mn.GetLastPaidBlock(), CMasternodePtr{&mn}));
     }
 
     nCount = (int)vecMasternodeLastPaid.size();
@@ -685,7 +684,7 @@ CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight
     return pBestMasternode;
 }
 
-CMasternode* CMasternodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToExclude, int nProtocolVersion)
+CMasternodePtr CMasternodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToExclude, int nProtocolVersion)
 {
     LOCK(cs);
 
@@ -695,12 +694,12 @@ CMasternode* CMasternodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToE
     int nCountNotExcluded = nCountEnabled - vecToExclude.size();
 
     LogPrintf("CMasternodeMan::FindRandomNotInVec -- %d enabled masternodes, %d masternodes to choose from\n", nCountEnabled, nCountNotExcluded);
-    if(nCountNotExcluded < 1) return NULL;
+    if(nCountNotExcluded < 1) return nullptr;
 
     // fill a vector of pointers
-    std::vector<CMasternode*> vpMasternodesShuffled;
+    std::vector<CMasternodePtr> vpMasternodesShuffled;
     for (CMasternode &mn : vMasternodes) {
-        vpMasternodesShuffled.push_back(&mn);
+        vpMasternodesShuffled.push_back(CMasternodePtr{&mn});
     }
 
     InsecureRand insecureRand;
@@ -709,7 +708,7 @@ CMasternode* CMasternodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToE
     bool fExclude;
 
     // loop through
-    for (CMasternode* pmn : vpMasternodesShuffled) {
+    for (auto &pmn : vpMasternodesShuffled) {
         if(pmn->nProtocolVersion < nProtocolVersion || !pmn->IsEnabled()) continue;
         fExclude = false;
         for (const CTxIn &txinToExclude : vecToExclude) {
@@ -730,7 +729,7 @@ CMasternode* CMasternodeMan::FindRandomNotInVec(const std::vector<CTxIn> &vecToE
 
 int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int nBlockHeight, int nMinProtocol, bool fOnlyActive)
 {
-    std::vector<std::pair<int64_t, CMasternode*> > vecMasternodeScores;
+    std::vector<std::pair<int64_t, CMasternodePtr> > vecMasternodeScores;
 
     //make sure we know about this block
     uint256 blockHash = uint256();
@@ -749,7 +748,7 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int nBlockHeight, int nM
         }
         int64_t nScore = mn.CalculateScore(blockHash).GetCompact(false);
 
-        vecMasternodeScores.push_back(std::make_pair(nScore, &mn));
+        vecMasternodeScores.push_back(std::make_pair(nScore, CMasternodePtr{&mn}));
     }
 
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareScoreMN());
@@ -765,7 +764,7 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int nBlockHeight, int nM
 
 std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int nBlockHeight, int nMinProtocol)
 {
-    std::vector<std::pair<int64_t, CMasternode*> > vecMasternodeScores;
+    std::vector<std::pair<int64_t, CMasternodePtr> > vecMasternodeScores;
     std::vector<std::pair<int, CMasternode> > vecMasternodeRanks;
 
     //make sure we know about this block
@@ -781,7 +780,7 @@ std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int
 
         int64_t nScore = mn.CalculateScore(blockHash).GetCompact(false);
 
-        vecMasternodeScores.push_back(std::make_pair(nScore, &mn));
+        vecMasternodeScores.push_back(std::make_pair(nScore, CMasternodePtr{&mn}));
     }
 
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareScoreMN());
@@ -795,9 +794,9 @@ std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int
     return vecMasternodeRanks;
 }
 
-CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int nBlockHeight, int nMinProtocol, bool fOnlyActive)
+CMasternodePtr CMasternodeMan::GetMasternodeByRank(int nRank, int nBlockHeight, int nMinProtocol, bool fOnlyActive)
 {
-    std::vector<std::pair<int64_t, CMasternode*> > vecMasternodeScores;
+    std::vector<std::pair<int64_t, CMasternodePtr> > vecMasternodeScores;
 
     LOCK(cs);
 
@@ -815,7 +814,7 @@ CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int nBlockHeight, in
 
         int64_t nScore = mn.CalculateScore(blockHash).GetCompact(false);
 
-        vecMasternodeScores.push_back(std::make_pair(nScore, &mn));
+        vecMasternodeScores.push_back(std::make_pair(nScore, CMasternodePtr{&mn}));
     }
 
     sort(vecMasternodeScores.rbegin(), vecMasternodeScores.rend(), CompareScoreMN());
@@ -828,7 +827,7 @@ CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int nBlockHeight, in
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void CMasternodeMan::ProcessMasternodeConnections()
@@ -926,13 +925,13 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         LogPrint("masternode", "MNPING -- Masternode ping, masternode=%s new\n", mnp.vin.prevout.ToStringShort());
 
         // see if we have this Masternode
-        CMasternode* pmn = mnodeman.Find(mnp.vin);
+        CMasternodePtr pmn = mnodeman.Find(mnp.vin);
 
         // too late, new MNANNOUNCE is required
         if(pmn && pmn->IsNewStartRequired()) return;
 
         int nDos = 0;
-        if(mnp.CheckAndUpdate(pmn, false, nDos)) return;
+        if(mnp.CheckAndUpdate(pmn.get(), false, nDos)) return;
 
         // check the certificate and make sure if the masternode had registered on the Ulord center server
         if(!mnodecenter.VerifyLicense(mnp))
@@ -1394,13 +1393,13 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
         std::string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash.ToString(),
                                 mnv.vin1.prevout.ToStringShort(), mnv.vin2.prevout.ToStringShort());
 
-        CMasternode* pmn1 = Find(mnv.vin1);
+        CMasternodePtr pmn1 = Find(mnv.vin1);
         if(!pmn1) {
             LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- can't find masternode1 %s\n", mnv.vin1.prevout.ToStringShort());
             return;
         }
 
-        CMasternode* pmn2 = Find(mnv.vin2);
+        CMasternodePtr pmn2 = Find(mnv.vin2);
         if(!pmn2) {
             LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- can't find masternode2 %s\n", mnv.vin2.prevout.ToStringShort());
             return;
@@ -1465,8 +1464,8 @@ void CMasternodeMan::UpdateMasternodeList(CMasternodeBroadcast mnb)
 
     LogPrintf("CMasternodeMan::UpdateMasternodeList -- masternode=%s  addr=%s\n", mnb.vin.prevout.ToStringShort(), mnb.addr.ToString());
 
-    CMasternode* pmn = Find(mnb.vin);
-    if(pmn == NULL) {
+    CMasternodePtr pmn = Find(mnb.vin);
+    if (pmn == nullptr) {
         CMasternode mn(mnb);
         if(Add(mn)) {
             masternodeSync.AddedMasternodeList();
@@ -1530,10 +1529,10 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
     }
 
     // search Masternode list
-    CMasternode* pmn = Find(mnb.vin);
-    if(pmn) {
+    CMasternodePtr pmn = Find(mnb.vin);
+    if (pmn) {
         CMasternodeBroadcast mnbOld = mapSeenMasternodeBroadcast[CMasternodeBroadcast(*pmn).GetHash()].second;
-        if(!mnb.Update(pmn, nDos)) {
+        if(!mnb.Update(pmn.get(), nDos)) {
             LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- Update() failed, masternode=%s\n", mnb.vin.prevout.ToStringShort());
             return false;
         }
@@ -1621,10 +1620,9 @@ void CMasternodeMan::CheckAndRebuildMasternodeIndex()
 void CMasternodeMan::UpdateWatchdogVoteTime(const CTxIn& vin)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return;
-    }
     pMN->UpdateWatchdogVoteTime();
     nLastWatchdogVoteTime = GetTime();
 }
@@ -1639,10 +1637,9 @@ bool CMasternodeMan::IsWatchdogActive()
 void CMasternodeMan::AddGovernanceVote(const CTxIn& vin, uint256 nGovernanceObjectHash)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return;
-    }
     pMN->AddGovernanceVote(nGovernanceObjectHash);
 }
 
@@ -1657,60 +1654,54 @@ void CMasternodeMan::RemoveGovernanceObject(uint256 nGovernanceObjectHash)
 void CMasternodeMan::CheckMasternode(const CTxIn& vin, bool fForce)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return;
-    }
     pMN->Check(fForce);
 }
 
 void CMasternodeMan::CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(pubKeyMasternode);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(pubKeyMasternode);
+    if (!pMN)
         return;
-    }
     pMN->Check(fForce);
 }
 
 int CMasternodeMan::GetMasternodeState(const CTxIn& vin)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return CMasternode::MASTERNODE_NEW_START_REQUIRED;
-    }
     return pMN->nActiveState;
 }
 
 int CMasternodeMan::GetMasternodeState(const CPubKey& pubKeyMasternode)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(pubKeyMasternode);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(pubKeyMasternode);
+    if (!pMN)
         return CMasternode::MASTERNODE_NEW_START_REQUIRED;
-    }
     return pMN->nActiveState;
 }
 
 bool CMasternodeMan::IsMasternodePingedWithin(const CTxIn& vin, int nSeconds, int64_t nTimeToCheckAt)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN) {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return false;
-    }
     return pMN->IsPingedWithin(nSeconds, nTimeToCheckAt);
 }
 
 void CMasternodeMan::SetMasternodeLastPing(const CTxIn& vin, const CMasternodePing& mnp)
 {
     LOCK(cs);
-    CMasternode* pMN = Find(vin);
-    if(!pMN)  {
+    CMasternodePtr pMN = Find(vin);
+    if (!pMN)
         return;
-    }
     pMN->lastPing = mnp;
     mapSeenMasternodePing.insert(std::make_pair(mnp.GetHash(), mnp));
 

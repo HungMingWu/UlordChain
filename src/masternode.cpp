@@ -917,8 +917,8 @@ CMasternodePing::CMasternodePing(CTxIn& vinNew)
     blockHash = chainActive[chainActive.Height() - 12]->GetBlockHash();
     sigTime = GetAdjustedTime();
 
-    CMasternode* pmn = mnodeman.Find(vin);
-    if(pmn)
+    CMasternodePtr pmn = mnodeman.Find(vin);
+    if (pmn)
     {
         certifyVersion = pmn->certifyVersion;
         certifyPeriod = pmn->certifyPeriod;

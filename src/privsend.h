@@ -415,7 +415,7 @@ private:
     void SetNull();
 
 public:
-    CMasternode* pSubmittedToMasternode;
+    CMasternodePtr pSubmittedToMasternode;
     int nSessionDenom; //Users must submit an denom matching this
     int nCachedNumBlocks; //used for the overview screen
     bool fCreateAutoBackups; //builtin support for automatic backups

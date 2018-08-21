@@ -11,6 +11,7 @@
 #include "spork.h"
 #include "timedata.h"
 #include "base58.h"
+#include "observer_ptr.h"
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -24,7 +25,8 @@ static const int MASTERNODE_WATCHDOG_MAX_SECONDS        = 120 * 60;
 static const int MASTERNODE_NEW_START_REQUIRED_SECONDS  = 180 * 60;
 
 static const int MASTERNODE_POSE_BAN_MAX_SCORE          = 5;
-//
+
+using CMasternodePtr = nonstd::observer_ptr<CMasternode>;//
 // The Masternode Ping Class : Contains a different serialize method for sending pings from masternodes throughout the network
 //
 

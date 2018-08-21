@@ -20,7 +20,6 @@ class CMasternodeCenter;
 extern CMasternodeMan mnodeman;
 extern CMasternodeCenter mnodecenter;
 
-
 /**
  * Provides a forward and reverse index between MN vin's and integers.
  *
@@ -216,9 +215,9 @@ public:
     void DsegUpdate(CNode* pnode);
 
     /// Find an entry
-    CMasternode* Find(const CScript &payee);
-    CMasternode* Find(const CTxIn& vin);
-    CMasternode* Find(const CPubKey& pubKeyMasternode);
+    CMasternodePtr Find(const CScript &payee);
+    CMasternodePtr Find(const CTxIn& vin);
+    CMasternodePtr Find(const CPubKey& pubKeyMasternode);
 
     /// Versions of Find that are safe to use from outside the class
     bool Get(const CPubKey& pubKeyMasternode, CMasternode& masternode);
@@ -274,18 +273,18 @@ public:
     boost::optional<masternode_info_t> GetMasternodeInfo(const CPubKey& pubKeyMasternode);
 
     /// Find an entry in the masternode list that is next to be paid
-    CMasternode* GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount);
+    CMasternodePtr GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount);
     /// Same as above but use current block height
-    CMasternode* GetNextMasternodeInQueueForPayment(bool fFilterSigTime, int& nCount);
+    CMasternodePtr GetNextMasternodeInQueueForPayment(bool fFilterSigTime, int& nCount);
 
     /// Find a random entry
-    CMasternode* FindRandomNotInVec(const std::vector<CTxIn> &vecToExclude, int nProtocolVersion = -1);
+    CMasternodePtr FindRandomNotInVec(const std::vector<CTxIn> &vecToExclude, int nProtocolVersion = -1);
 
     std::vector<CMasternode> GetFullMasternodeVector() { return vMasternodes; }
 
     std::vector<std::pair<int, CMasternode> > GetMasternodeRanks(int nBlockHeight = -1, int nMinProtocol=0);
     int GetMasternodeRank(const CTxIn &vin, int nBlockHeight, int nMinProtocol=0, bool fOnlyActive=true);
-    CMasternode* GetMasternodeByRank(int nRank, int nBlockHeight, int nMinProtocol=0, bool fOnlyActive=true);
+    CMasternodePtr GetMasternodeByRank(int nRank, int nBlockHeight, int nMinProtocol=0, bool fOnlyActive=true);
 
     void ProcessMasternodeConnections();
     std::pair<CService, std::set<uint256> > PopScheduledMnbRequestConnection();

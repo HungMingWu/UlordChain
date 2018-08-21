@@ -99,9 +99,9 @@ void CPrivSendRelay::Relay()
 
 void CPrivSendRelay::RelayThroughNode(int nRank)
 {
-    CMasternode* pmn = mnodeman.GetMasternodeByRank(nRank, nBlockHeight, MIN_PRIVATESEND_PEER_PROTO_VERSION);
+    CMasternodePtr pmn = mnodeman.GetMasternodeByRank(nRank, nBlockHeight, MIN_PRIVATESEND_PEER_PROTO_VERSION);
 
-    if(pmn != NULL){
+    if (pmn != nullptr) {
         //printf("RelayThroughNode %s\n", pmn->addr.ToString().c_str());
         CNode* pnode = ConnectNode((CAddress)pmn->addr, NULL);
         if(pnode) {

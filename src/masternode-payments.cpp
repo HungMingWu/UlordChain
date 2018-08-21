@@ -288,7 +288,7 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int nBlockH
     if(!mnpayments.GetBlockPayee(nBlockHeight, payee)) {
         // no masternode detected...
         int nCount = 0;
-        CMasternode *winningNode = mnodeman.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount);
+        CMasternodePtr winningNode = mnodeman.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount);
         if(!winningNode) {
             // ...and we can't calculate it on our own
             LogPrintf("CMasternodePayments::FillBlockPayee -- Failed to detect masternode to pay\n");
@@ -681,9 +681,9 @@ void CMasternodePayments::CheckAndRemove()
 
 bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::string& strError)
 {
-    CMasternode* pmn = mnodeman.Find(vinMasternode);
+    CMasternodePtr pmn = mnodeman.Find(vinMasternode);
 
-    if(!pmn) {
+    if (!pmn) {
         strError = strprintf("Unknown Masternode: prevout=%s", vinMasternode.prevout.ToStringShort());
         // Only ask if we are already synced and still have no idea about that Masternode
         if(masternodeSync.IsSynced()) {
@@ -760,7 +760,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
     // pay to the oldest MN that still had no payment but its input is old enough and it was active long enough
     int nCount = 0;
-    CMasternode *pmn = mnodeman.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount);
+    CMasternodePtr pmn = mnodeman.GetNextMasternodeInQueueForPayment(nBlockHeight, true, nCount);
 
     if (pmn == NULL) {
         LogPrintf("CMasternodePayments::ProcessBlock -- ERROR: Failed to find masternode to pay\n");

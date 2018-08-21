@@ -133,7 +133,7 @@ void MasternodeList::StartAll(std::string strCommand)
         CMasternodeBroadcast mnb;
 
         CTxIn txin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-        CMasternode *pmn = mnodeman.Find(txin);
+        CMasternodePtr pmn = mnodeman.Find(txin);
 
         if(strCommand == "start-missing" && pmn) continue;
 
@@ -215,9 +215,9 @@ void MasternodeList::updateMyNodeList(bool fForce)
     ui->tableWidgetMasternodes->setSortingEnabled(false);
     for (CMasternodeConfig::CMasternodeEntry mne : masternodeConfig.getEntries()) {
         CTxIn txin = CTxIn(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
-        CMasternode *pmn = mnodeman.Find(txin);
+        CMasternodePtr pmn = mnodeman.Find(txin);
 
-        updateMyMasternodeInfo(QString::fromStdString(mne.getAlias()), QString::fromStdString(mne.getIp()), pmn);
+        updateMyMasternodeInfo(QString::fromStdString(mne.getAlias()), QString::fromStdString(mne.getIp()), pmn.get());
     }
     ui->tableWidgetMasternodes->setSortingEnabled(true);
 
