@@ -563,11 +563,12 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
 
 } // anon namespace
 
-bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
+boost::optional<CNodeStateStats> GetNodeStateStats(NodeId nodeid) {
     LOCK(cs_main);
     CNodeState *state = State(nodeid);
-    if (state == NULL)
-        return false;
+    if (state == nullptr)
+        return {};
+    CNodeStateStats stats;
     stats.nMisbehavior = state->nMisbehavior;
     stats.nSyncHeight = state->pindexBestKnownBlock ? state->pindexBestKnownBlock->nHeight : -1;
     stats.nCommonHeight = state->pindexLastCommonBlock ? state->pindexLastCommonBlock->nHeight : -1;
@@ -575,7 +576,7 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
         if (queue.pindex)
             stats.vHeightInFlight.push_back(queue.pindex->nHeight);
     }
-    return true;
+    return stats;
 }
 
 void RegisterNodeSignals(CNodeSignals& nodeSignals)

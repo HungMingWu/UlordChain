@@ -127,8 +127,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
 
     for (const CNodeStats& stats : vstats) {
         UniValue obj(UniValue::VOBJ);
-        CNodeStateStats statestats;
-        bool fStateStats = GetNodeStateStats(stats.nodeid, statestats);
+        boost::optional<CNodeStateStats> statestats = GetNodeStateStats(stats.nodeid);
         obj.push_back(Pair("id", stats.nodeid));
         obj.push_back(Pair("addr", stats.addrName));
         if (!(stats.addrLocal.empty()))
@@ -152,12 +151,12 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
         obj.push_back(Pair("subver", stats.cleanSubVer));
         obj.push_back(Pair("inbound", stats.fInbound));
         obj.push_back(Pair("startingheight", stats.nStartingHeight));
-        if (fStateStats) {
-            obj.push_back(Pair("banscore", statestats.nMisbehavior));
-            obj.push_back(Pair("synced_headers", statestats.nSyncHeight));
-            obj.push_back(Pair("synced_blocks", statestats.nCommonHeight));
+        if (statestats) {
+            obj.push_back(Pair("banscore", statestats->nMisbehavior));
+            obj.push_back(Pair("synced_headers", statestats->nSyncHeight));
+            obj.push_back(Pair("synced_blocks", statestats->nCommonHeight));
             UniValue heights(UniValue::VARR);
-            for (int height : statestats.vHeightInFlight) {
+            for (int height : statestats->vHeightInFlight) {
                 heights.push_back(height);
             }
             obj.push_back(Pair("inflight", heights));

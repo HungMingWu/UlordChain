@@ -32,6 +32,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <boost/optional.hpp>
 
 class CBlockIndex;
 class CBlockTreeDB;
@@ -291,7 +292,7 @@ void UnlinkPrunedFiles(std::set<int>& setFilesToPrune);
 /** Create a new block index entry for a given block hash */
 CBlockIndex * InsertBlockIndex(uint256 hash);
 /** Get statistics from node state */
-bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats);
+boost::optional<CNodeStateStats> GetNodeStateStats(NodeId nodeid);
 /** Increase a node's misbehavior score. */
 void Misbehaving(NodeId nodeid, int howmuch);
 /** Flush all state, indexes and buffers to disk. */
@@ -315,9 +316,9 @@ std::string FormatStateMessage(const CValidationState &state);
 ThresholdState VersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos);
 
 struct CNodeStateStats {
-    int nMisbehavior;
-    int nSyncHeight;
-    int nCommonHeight;
+    int nMisbehavior = 0;
+    int nSyncHeight = -1;
+    int nCommonHeight = -1;
     std::vector<int> vHeightInFlight;
 };
 

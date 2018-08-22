@@ -32,27 +32,27 @@ bool CMasternodeSync::IsSynced()
 
 bool CMasternodeSync::CheckNodeHeight(CNode* pnode, bool fDisconnectStuckNodes)
 {
-    CNodeStateStats stats;
-    if(!GetNodeStateStats(pnode->id, stats) || stats.nCommonHeight == -1 || stats.nSyncHeight == -1) return false; // not enough info about this peer
+    boost::optional<CNodeStateStats> stats = GetNodeStateStats(pnode->id);
+    if (!stats || stats->nCommonHeight == -1 || stats->nSyncHeight == -1) return false; // not enough info about this peer
 
     // Check blocks and headers, allow a small error margin of 1 block
-    if(pCurrentBlockIndex->nHeight - 1 > stats.nCommonHeight) {
+    if (pCurrentBlockIndex->nHeight - 1 > stats->nCommonHeight) {
         // This peer probably stuck, don't sync any additional data from it
         if(fDisconnectStuckNodes) {
             // Disconnect to free this connection slot for another peer.
             pnode->fDisconnect = true;
             LogPrintf("CMasternodeSync::CheckNodeHeight -- disconnecting from stuck peer, nHeight=%d, nCommonHeight=%d, peer=%d\n",
-                        pCurrentBlockIndex->nHeight, stats.nCommonHeight, pnode->id);
+                        pCurrentBlockIndex->nHeight, stats->nCommonHeight, pnode->id);
         } else {
             LogPrintf("CMasternodeSync::CheckNodeHeight -- skipping stuck peer, nHeight=%d, nCommonHeight=%d, peer=%d\n",
-                        pCurrentBlockIndex->nHeight, stats.nCommonHeight, pnode->id);
+                        pCurrentBlockIndex->nHeight, stats->nCommonHeight, pnode->id);
         }
         return false;
     }
-    else if(pCurrentBlockIndex->nHeight < stats.nSyncHeight - 1) {
+    else if (pCurrentBlockIndex->nHeight < stats->nSyncHeight - 1) {
         // This peer announced more headers than we have blocks currently
         LogPrintf("CMasternodeSync::CheckNodeHeight -- skipping peer, who announced more headers than we have blocks currently, nHeight=%d, nSyncHeight=%d, peer=%d\n",
-                    pCurrentBlockIndex->nHeight, stats.nSyncHeight, pnode->id);
+                    pCurrentBlockIndex->nHeight, stats->nSyncHeight, pnode->id);
         return false;
     }
 

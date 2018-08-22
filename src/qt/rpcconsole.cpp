@@ -861,19 +861,19 @@ void RPCConsole::updateNodeDetail(const CNodeCombinedStats *stats)
 
     // This check fails for example if the lock was busy and
     // nodeStateStats couldn't be fetched.
-    if (stats->fNodeStateStatsAvailable) {
+    if (stats->nodeStateStats) {
         // Ban score is init to 0
-        ui->peerBanScore->setText(QString("%1").arg(stats->nodeStateStats.nMisbehavior));
+        ui->peerBanScore->setText(QString("%1").arg(stats->nodeStateStats->nMisbehavior));
 
         // Sync height is init to -1
-        if (stats->nodeStateStats.nSyncHeight > -1)
-            ui->peerSyncHeight->setText(QString("%1").arg(stats->nodeStateStats.nSyncHeight));
+        if (stats->nodeStateStats->nSyncHeight > -1)
+            ui->peerSyncHeight->setText(QString("%1").arg(stats->nodeStateStats->nSyncHeight));
         else
             ui->peerSyncHeight->setText(tr("Unknown"));
 
         // Common height is init to -1
-        if (stats->nodeStateStats.nCommonHeight > -1)
-            ui->peerCommonHeight->setText(QString("%1").arg(stats->nodeStateStats.nCommonHeight));
+        if (stats->nodeStateStats->nCommonHeight > -1)
+            ui->peerCommonHeight->setText(QString("%1").arg(stats->nodeStateStats->nCommonHeight));
         else
             ui->peerCommonHeight->setText(tr("Unknown"));
     }
