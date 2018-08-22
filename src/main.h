@@ -843,7 +843,7 @@ extern CChain chainActive;
 extern CCoinsViewCache *pcoinsTip;
 
 /** Global variable that points to the active CClaimTrie (protected by cs_main) */                                                                                                                                                                                            
-extern CClaimTrie *pclaimTrie;
+extern std::unique_ptr<CClaimTrie> pclaimTrie;
 
 /** Global variable that points to the active CClaimTrie account_name (protected by cs_main) */                                                                                                                                                                                            
 extern std::map<std::string,int> m_vStringName;
@@ -857,7 +857,7 @@ extern bool is_Init;
 
 
 /** Global variable that points to the active block tree (protected by cs_main) */
-extern CBlockTreeDB *pblocktree;
+extern std::unique_ptr<CBlockTreeDB> pblocktree;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

@@ -257,10 +257,8 @@ void PrepareShutdown()
         pcoinscatcher = NULL;
         delete pcoinsdbview;
         pcoinsdbview = NULL;
-        delete pblocktree;
-        pblocktree = NULL;
-        delete pclaimTrie;                                                      
-        pclaimTrie = NULL;
+        pblocktree.reset();
+        pclaimTrie.reset();
     }
 #ifdef ENABLE_WALLET
     if (pwalletMain)
@@ -1471,14 +1469,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                 delete pcoinsTip;
                 delete pcoinsdbview;
                 delete pcoinscatcher;
-                delete pblocktree;
-				delete pclaimTrie;  // claim opt
 
-                pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
+                pblocktree = std::make_unique<CBlockTreeDB>(nBlockTreeDBCache, false, fReindex);
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
-				pclaimTrie = new CClaimTrie(false, fReindex); // claim
+                pclaimTrie = std::make_unique<CClaimTrie>(false, fReindex); // claim
 
                 if (fReindex) {
                     pblocktree->WriteReindexing(true);

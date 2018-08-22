@@ -139,7 +139,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         {   
             return NULL;
         }
-        CClaimTrieCache trieCache(pclaimTrie);
+        CClaimTrieCache trieCache(*pclaimTrie);
         const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
 
         // Add our coinbase tx as first transaction

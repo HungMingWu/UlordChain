@@ -445,12 +445,11 @@ public:
 class CClaimTrieCache
 {
 public:
-    CClaimTrieCache(CClaimTrie* base, bool fRequireTakeoverHeights = true)
+    CClaimTrieCache(CClaimTrie &base, bool fRequireTakeoverHeights = true)
                     : base(base),
                       fRequireTakeoverHeights(fRequireTakeoverHeights)
     {
-        assert(base);
-        nCurrentHeight = base->nCurrentHeight;
+        nCurrentHeight = base.nCurrentHeight;
     }
     
     uint256 getMerkleHash() const;
@@ -505,7 +504,7 @@ public:
 
     bool finalizeDecrement() const;
 private:
-    CClaimTrie* base;
+    CClaimTrie& base;
 
     bool fRequireTakeoverHeights;
 

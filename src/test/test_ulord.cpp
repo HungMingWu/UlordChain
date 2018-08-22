@@ -60,10 +60,10 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         pathTemp = GetTempPath() / strprintf("test_ulord_%lu_%i", (unsigned long)GetTime(), (int)(GetRand(100000)));
         boost::filesystem::create_directories(pathTemp);
         mapArgs["-datadir"] = pathTemp.string();
-        pblocktree = new CBlockTreeDB(1 << 20, true);
+        pblocktree = std::make_unique<CBlockTreeDB>(1 << 20, true);
         pcoinsdbview = new CCoinsViewDB(1 << 23, true);
         pcoinsTip = new CCoinsViewCache(pcoinsdbview);
-        pclaimTrie = new CClaimTrie(true, false, 1);
+        pclaimTrie = std::make_unique<CClaimTrie>(true, false, 1);
         InitBlockIndex(chainparams);
 #ifdef ENABLE_WALLET
         bool fFirstRun;
@@ -88,10 +88,10 @@ TestingSetup::~TestingSetup()
         pwalletMain = NULL;
 #endif
         UnloadBlockIndex();
-        delete pclaimTrie;
+        pclaimTrie.reset();
         delete pcoinsTip;
         delete pcoinsdbview;
-        delete pblocktree;
+        pblocktree.reset();
 #ifdef ENABLE_WALLET
         bitdb.Flush(true);
         bitdb.Reset();
