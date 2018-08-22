@@ -479,11 +479,11 @@ CBlockIndex* LastCommonAncestor(CBlockIndex* pa, CBlockIndex* pb) {
 
 /** Update pindexLastCommonBlock and add not-in-flight missing successors to vBlocks, until it has
  *  at most count entries. */
-void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBlockIndex*>& vBlocks, NodeId& nodeStaller) {
+std::tuple<std::vector<CBlockIndex*>, NodeId> FindNextBlocksToDownload(NodeId nodeid, unsigned int count) {
+    std::vector<CBlockIndex*> vBlocks;
+    NodeId nodeStaller = -1;
     if (count == 0)
-        return;
-
-    vBlocks.reserve(vBlocks.size() + count);
+        return {vBlocks, nodeStaller};
     CNodeState *state = State(nodeid);
     assert(state != NULL);
 
@@ -492,7 +492,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
 
     if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork) {
         // This peer has nothing interesting.
-        return;
+        return {vBlocks, nodeStaller};
     }
 
     if (state->pindexLastCommonBlock == NULL) {
@@ -505,7 +505,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     // of its current tip anymore. Go back enough to fix that.
     state->pindexLastCommonBlock = LastCommonAncestor(state->pindexLastCommonBlock, state->pindexBestKnownBlock);
     if (state->pindexLastCommonBlock == state->pindexBestKnownBlock)
-        return;
+        return {vBlocks, nodeStaller};
 
     std::vector<CBlockIndex*> vToFetch;
     CBlockIndex *pindexWalk = state->pindexLastCommonBlock;
@@ -534,7 +534,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
         for (CBlockIndex* pindex : vToFetch) {
             if (!pindex->IsValid(BLOCK_VALID_TREE)) {
                 // We consider the chain that this peer is on invalid.
-                return;
+                return {vBlocks, nodeStaller};
             }
             if (pindex->nStatus & BLOCK_HAVE_DATA || chainActive.Contains(pindex)) {
                 if (pindex->nChainTx)
@@ -547,11 +547,11 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
                         // We aren't able to fetch anything, but we would be if the download window was one larger.
                         nodeStaller = waitingfor;
                     }
-                    return;
+                    return {vBlocks, nodeStaller};
                 }
                 vBlocks.push_back(pindex);
                 if (vBlocks.size() == count) {
-                    return;
+                    return {vBlocks, nodeStaller};
                 }
             } else if (waitingfor == -1) {
                 // This is the first already-in-flight block.
@@ -559,6 +559,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
             }
         }
     }
+    return {vBlocks, nodeStaller};
 }
 
 } // anon namespace
@@ -7237,8 +7238,8 @@ bool SendMessages(CNode* pto)
         vector<CInv> vGetData;
         if (!pto->fDisconnect && !pto->fClient && (fFetch || !IsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
             vector<CBlockIndex*> vToDownload;
-            NodeId staller = -1;
-            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller);
+            NodeId staller;
+            std::tie(vToDownload, staller) = FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight);
             for (CBlockIndex *pindex : vToDownload) {
                 vGetData.push_back(CInv(MSG_BLOCK, pindex->GetBlockHash()));
                 MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), consensusParams, pindex);
