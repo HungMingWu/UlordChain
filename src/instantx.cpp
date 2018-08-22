@@ -880,13 +880,13 @@ bool CTxLockRequest::IsValid(bool fRequireUnspent) const
                 return false;
             }
             LOCK(cs_main);
-            BlockMap::iterator mi = mapBlockIndex.find(nHashOutpointConfirmed);
-            if(mi == mapBlockIndex.end()) {
+            auto it = mapBlockIndex.find(nHashOutpointConfirmed);
+	    if (it == end(mapBlockIndex)) {
                 // not on this chain?
                 LogPrint("instantsend", "txLockRequest::IsValid -- Failed to find block %s for outpoint %s\n", nHashOutpointConfirmed.ToString(), txin.prevout.ToStringShort());
                 return false;
             }
-            nPrevoutHeight = mi->second ? mi->second->nHeight : 0;
+            nPrevoutHeight = it->second ? it->second->nHeight : 0;
         }
 
         int nTxAge = chainActive.Height() - (nPrevoutHeight ? nPrevoutHeight : coins.nHeight) + 1;
@@ -955,13 +955,13 @@ bool CTxLockVote::IsValid(CNode* pnode) const
             return false;
         }
         LOCK(cs_main);
-        BlockMap::iterator mi = mapBlockIndex.find(nHashOutpointConfirmed);
-        if(mi == mapBlockIndex.end() || !mi->second) {
+        auto it = mapBlockIndex.find(nHashOutpointConfirmed);
+        if (it == end(mapBlockIndex) || !it->second) {
             // not on this chain?
             LogPrint("instantsend", "CTxLockVote::IsValid -- Failed to find block %s for outpoint %s\n", nHashOutpointConfirmed.ToString(), outpoint.ToStringShort());
             return false;
         }
-        nPrevoutHeight = mi->second->nHeight;
+        nPrevoutHeight = it->second->nHeight;
     }
 
     int nLockInputHeight = nPrevoutHeight + 4;

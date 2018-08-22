@@ -753,8 +753,8 @@ void ListNameClaims(const CWalletTx& wtx,const string &strAccount,int nMinDepth,
                 entry.push_back(Pair("amount",ValueFromAmount(s.amount)));
                 entry.push_back(Pair("vout",s.vout));
                 entry.push_back(Pair("fee",ValueFromAmount(nFee)));
-                BlockMap::iterator it = mapBlockIndex.find(wtx.hashBlock);
-                if ( it != mapBlockIndex.end() )
+                auto it = mapBlockIndex.find(wtx.hashBlock);
+                if (it != end(mapBlockIndex))
                 {
                     CBlockIndex *pindex = it->second;
                     if ( pindex )
@@ -2737,8 +2737,8 @@ UniValue listsinceblock(const UniValue& params, bool fHelp)
         uint256 blockId;
 
         blockId.SetHex(params[0].get_str());
-        BlockMap::iterator it = mapBlockIndex.find(blockId);
-        if (it != mapBlockIndex.end())
+        auto it = mapBlockIndex.find(blockId);
+        if (it != end(mapBlockIndex))
             pindex = it->second;
     }
 

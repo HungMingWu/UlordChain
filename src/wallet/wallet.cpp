@@ -4882,10 +4882,10 @@ int CMerkleTx::SetMerkleBranch(const CBlock& block)
     }
 
     // Is the tx in a block that's in the main chain
-    BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
-    if (mi == mapBlockIndex.end())
+    auto it = mapBlockIndex.find(hashBlock);
+    if (it == end(mapBlockIndex))
         return 0;
-    const CBlockIndex* pindex = (*mi).second;
+    const CBlockIndex* pindex = it->second;
     if (!pindex || !chainActive.Contains(pindex))
         return 0;
 
@@ -4902,11 +4902,11 @@ int CMerkleTx::GetDepthInMainChain(const CBlockIndex* &pindexRet, bool enableIX)
         AssertLockHeld(cs_main);
 
         // Find the block it claims to be in
-        BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
-        if (mi == mapBlockIndex.end())
+        auto it = mapBlockIndex.find(hashBlock);
+        if (it == end(mapBlockIndex))
             nResult = 0;
         else {
-            CBlockIndex* pindex = (*mi).second;
+            CBlockIndex* pindex = it->second;
             if (!pindex || !chainActive.Contains(pindex))
                 nResult = 0;
             else {

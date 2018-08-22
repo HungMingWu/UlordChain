@@ -562,9 +562,9 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError)
     LOCK(cs_main);
     int nConfirmationsIn = GetIXConfirmations(nCollateralHash);
     if (nBlockHash != uint256()) {
-        BlockMap::iterator mi = mapBlockIndex.find(nBlockHash);
-        if (mi != mapBlockIndex.end() && (*mi).second) {
-            CBlockIndex* pindex = (*mi).second;
+        auto it = mapBlockIndex.find(nBlockHash);
+        if (it != end(mapBlockIndex) && it->second) {
+            CBlockIndex* pindex = it->second;
             if (chainActive.Contains(pindex)) {
                 nConfirmationsIn += chainActive.Height() - pindex->nHeight + 1;
             }
