@@ -74,9 +74,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             // 9/10 blocks add 2nd highest and so on until ...
             // 1/10 blocks add lowest fee/pri transactions
             while (txHashes[9-h].size()) {
-                CTransaction btx;
-                if (mpool.lookup(txHashes[9-h].back(), btx))
-                    block.push_back(btx);
+                boost::optional<CTransaction> btx = mpool.lookup(txHashes[9-h].back());
+                if (btx)
+                    block.push_back(*btx);
                 txHashes[9-h].pop_back();
             }
         }
@@ -160,9 +160,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     // Estimates should still not be below original
     for (int j = 0; j < 10; j++) {
         while(txHashes[j].size()) {
-            CTransaction btx;
-            if (mpool.lookup(txHashes[j].back(), btx))
-                block.push_back(btx);
+            boost::optional<CTransaction> btx = mpool.lookup(txHashes[j].back());
+            if (btx)
+                block.push_back(*btx);
             txHashes[j].pop_back();
         }
     }
@@ -181,9 +181,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
                 tx.vin[0].prevout.n = 10000*blocknum+100*j+k;
                 uint256 hash = tx.GetHash();
                 mpool.addUnchecked(hash, entry.Fee(feeV[k/4][j]).Time(GetTime()).Priority(priV[k/4][j]).Height(blocknum).FromTx(tx, &mpool));
-                CTransaction btx;
-                if (mpool.lookup(hash, btx))
-                    block.push_back(btx);
+                boost::optional<CTransaction> btx = mpool.lookup(hash);
+                if (btx)
+                    block.push_back(*btx);
             }
         }
         mpool.removeForBlock(block, ++blocknum, dummyConflicted);

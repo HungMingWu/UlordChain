@@ -257,7 +257,8 @@ std::string GetWarnings(const std::string& strFor);
 bool GetProofForName(const CBlockIndex* pindexProof, const std::string& name, CClaimTrieProof& proof);
 
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
-bool GetTransaction(const uint256 &hash, CTransaction &tx, const Consensus::Params& params, uint256 &hashBlock, bool fAllowSlow = false);
+using TractactionTuple = std::tuple<boost::optional<CTransaction>, boost::optional<uint256>>;
+TractactionTuple GetTransaction(const uint256 &hash, const Consensus::Params& params, bool fAllowSlow = false);
 /** Find the best known block, and make it the tip of the block chain */
 bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams, const CBlock* pblock = NULL);
 

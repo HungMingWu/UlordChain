@@ -514,14 +514,14 @@ UniValue getclaimsfortx(const UniValue& params, bool fHelp)
     int nHeight = 0;
     if (!coin)
     {
-        CTransaction tx;
-        if (!mempool.lookup(hash, tx))
+        boost::optional<CTransaction> tx = mempool.lookup(hash);
+        if (tx)
         {
             return NullUniValue;
         }
         else
         {
-            txouts = tx.vout;
+            txouts = tx->vout;
         }
     }
     else

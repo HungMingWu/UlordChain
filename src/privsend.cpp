@@ -225,11 +225,12 @@ void CPrivSendPool::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataS
 
                 LogPrint("privatesend", "DSVIN -- txin=%s\n", txin.ToString());
 
-                CTransaction txPrev;
-                uint256 hash;
-                if(GetTransaction(txin.prevout.hash, txPrev, Params().GetConsensus(), hash, true)) {
-                    if(txPrev.vout.size() > txin.prevout.n)
-                        nValueIn += txPrev.vout[txin.prevout.n].nValue;
+                boost::optional<CTransaction> txPrev;
+                boost::optional<uint256> hash;
+                std::tie(txPrev, hash) = GetTransaction(txin.prevout.hash, Params().GetConsensus(), true);
+                if (txPrev) {
+                    if (txPrev->vout.size() > txin.prevout.n)
+                        nValueIn += txPrev->vout[txin.prevout.n].nValue;
                 } else {
                     LogPrintf("DSVIN -- missing input! tx=%s", tx.ToString());
                     PushStatus(pfrom, STATUS_REJECTED, ERR_MISSING_TX);
@@ -910,11 +911,12 @@ bool CPrivSendPool::IsCollateralValid(const CTransaction& txCollateral)
     }
 
     for (const CTxIn txin : txCollateral.vin) {
-        CTransaction txPrev;
-        uint256 hash;
-        if(GetTransaction(txin.prevout.hash, txPrev, Params().GetConsensus(), hash, true)) {
-            if(txPrev.vout.size() > txin.prevout.n)
-                nValueIn += txPrev.vout[txin.prevout.n].nValue;
+        boost::optional<CTransaction> txPrev;
+        boost::optional<uint256> hash;
+        std::tie(txPrev, hash) = GetTransaction(txin.prevout.hash, Params().GetConsensus(), true);
+        if (txPrev) {
+            if (txPrev->vout.size() > txin.prevout.n)
+                nValueIn += txPrev->vout[txin.prevout.n].nValue;
         } else {
             fMissingTx = true;
         }
@@ -2249,11 +2251,12 @@ bool CPrivSendSigner::IsVinAssociatedWithPubkey(const CTxIn& txin, const CPubKey
     CScript payee;
     payee = GetScriptForDestination(pubkey.GetID());
 
-    CTransaction tx;
-    uint256 hash;
+    boost::optional<CTransaction> tx;
+    boost::optional<uint256> hash;
+    std::tie(tx, hash) = GetTransaction(txin.prevout.hash, Params().GetConsensus(), true);
     const CAmount ct = Params().GetConsensus().colleteral;
-    if(GetTransaction(txin.prevout.hash, tx, Params().GetConsensus(), hash, true)) {
-        for (CTxOut out : tx.vout)
+    if (tx) {
+        for (CTxOut out : tx->vout)
             if(out.nValue == ct && out.scriptPubKey == payee) return true;
     }
 

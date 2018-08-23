@@ -526,10 +526,11 @@ bool CInstantSend::ResolveConflicts(const CTxLockCandidate& txLockCandidate, int
         return true;
     }
     // No conflicts were found so far, check to see if it was already included in block
-    CTransaction txTmp;
-    uint256 hashBlock;
-    if(GetTransaction(txHash, txTmp, Params().GetConsensus(), hashBlock, true) && hashBlock != uint256()) {
-        LogPrint("instantsend", "CInstantSend::ResolveConflicts -- Done, %s is included in block %s\n", txHash.ToString(), hashBlock.ToString());
+    boost::optional<CTransaction> txTmp;
+    boost::optional<uint256> hashBlock;
+    std::tie(txTmp, hashBlock) = GetTransaction(txHash, Params().GetConsensus(),  true);
+    if (txTmp && hashBlock) {
+        LogPrint("instantsend", "CInstantSend::ResolveConflicts -- Done, %s is included in block %s\n", txHash.ToString(), hashBlock->ToString());
         return true;
     }
     // Not in block yet, make sure all its inputs are still unspent
@@ -873,17 +874,18 @@ bool CTxLockRequest::IsValid(bool fRequireUnspent) const
             // Normally above sould be enough, but in case we are reprocessing this because of
             // a lot of legit orphan votes we should also check already spent outpoints.
             if(fRequireUnspent) return false;
-            CTransaction txOutpointCreated;
-            uint256 nHashOutpointConfirmed;
-            if(!GetTransaction(txin.prevout.hash, txOutpointCreated, Params().GetConsensus(), nHashOutpointConfirmed, true) || nHashOutpointConfirmed == uint256()) {
+            boost::optional<CTransaction> txOutpointCreated;
+            boost::optional<uint256> nHashOutpointConfirmed;
+            std::tie(txOutpointCreated, nHashOutpointConfirmed) = GetTransaction(txin.prevout.hash, Params().GetConsensus(), true);
+            if (!txOutpointCreated || !nHashOutpointConfirmed) {
                 LogPrint("instantsend", "txLockRequest::IsValid -- Failed to find outpoint %s\n", txin.prevout.ToStringShort());
                 return false;
             }
             LOCK(cs_main);
-            auto it = mapBlockIndex.find(nHashOutpointConfirmed);
+            auto it = mapBlockIndex.find(*nHashOutpointConfirmed);
 	    if (it == end(mapBlockIndex)) {
                 // not on this chain?
-                LogPrint("instantsend", "txLockRequest::IsValid -- Failed to find block %s for outpoint %s\n", nHashOutpointConfirmed.ToString(), txin.prevout.ToStringShort());
+                LogPrint("instantsend", "txLockRequest::IsValid -- Failed to find block %s for outpoint %s\n", nHashOutpointConfirmed->ToString(), txin.prevout.ToStringShort());
                 return false;
             }
             nPrevoutHeight = it->second ? it->second->nHeight : 0;
@@ -948,17 +950,18 @@ bool CTxLockVote::IsValid(CNode* pnode) const
         LogPrint("instantsend", "CTxLockVote::IsValid -- Failed to find UTXO %s\n", outpoint.ToStringShort());
         // Validating utxo set is not enough, votes can arrive after outpoint was already spent,
         // if lock request was mined. We should process them too to count them later if they are legit.
-        CTransaction txOutpointCreated;
-        uint256 nHashOutpointConfirmed;
-        if(!GetTransaction(outpoint.hash, txOutpointCreated, Params().GetConsensus(), nHashOutpointConfirmed, true) || nHashOutpointConfirmed == uint256()) {
+        boost::optional<CTransaction> txOutpointCreated;
+        boost::optional<uint256> nHashOutpointConfirmed;;
+        std::tie(txOutpointCreated, nHashOutpointConfirmed) = GetTransaction(outpoint.hash, Params().GetConsensus(), true);
+        if (!txOutpointCreated || !nHashOutpointConfirmed) {
             LogPrint("instantsend", "CTxLockVote::IsValid -- Failed to find outpoint %s\n", outpoint.ToStringShort());
             return false;
         }
         LOCK(cs_main);
-        auto it = mapBlockIndex.find(nHashOutpointConfirmed);
+        auto it = mapBlockIndex.find(*nHashOutpointConfirmed);
         if (it == end(mapBlockIndex) || !it->second) {
             // not on this chain?
-            LogPrint("instantsend", "CTxLockVote::IsValid -- Failed to find block %s for outpoint %s\n", nHashOutpointConfirmed.ToString(), outpoint.ToStringShort());
+            LogPrint("instantsend", "CTxLockVote::IsValid -- Failed to find block %s for outpoint %s\n", nHashOutpointConfirmed->ToString(), outpoint.ToStringShort());
             return false;
         }
         nPrevoutHeight = it->second->nHeight;

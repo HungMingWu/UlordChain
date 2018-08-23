@@ -229,19 +229,20 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
     if (params.size() > 1)
         fVerbose = (params[1].get_int() != 0);
 
-    CTransaction tx;
-    uint256 hashBlock;
-    if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+    boost::optional<CTransaction> tx;
+    boost::optional<uint256> hashBlock;
+    std::tie(tx, hashBlock) = GetTransaction(hash, Params().GetConsensus(), true);
+    if (!tx)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
-    string strHex = EncodeHexTx(tx);
+    string strHex = EncodeHexTx(*tx);
 
     if (!fVerbose)
         return strHex;
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", strHex));
-    TxToJSON(tx, hashBlock, result);
+    TxToJSON(*tx, *hashBlock, result);
     return result;
 }
 
@@ -285,13 +286,13 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
 
     CBlockIndex* pblockindex = NULL;
 
-    uint256 hashBlock;
+    boost::optional<uint256> hashBlock;
     if (params.size() > 1)
     {
         hashBlock = uint256S(params[1].get_str());
-        if (!mapBlockIndex.count(hashBlock))
+        if (!mapBlockIndex.count(*hashBlock))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-        pblockindex = mapBlockIndex[hashBlock];
+        pblockindex = mapBlockIndex[*hashBlock];
     } else {
         CCoins coins;
         if (pcoinsTip->GetCoins(oneTxid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
@@ -300,12 +301,13 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
 
     if (pblockindex == NULL)
     {
-        CTransaction tx;
-        if (!GetTransaction(oneTxid, tx, Params().GetConsensus(), hashBlock, false) || hashBlock.IsNull())
+        boost::optional<CTransaction> tx;
+        std::tie(tx, hashBlock) = GetTransaction(oneTxid, Params().GetConsensus(), false);
+        if (!tx || hashBlock->IsNull())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in block");
-        if (!mapBlockIndex.count(hashBlock))
+        if (!mapBlockIndex.count(*hashBlock))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction index corrupt");
-        pblockindex = mapBlockIndex[hashBlock];
+        pblockindex = mapBlockIndex[*hashBlock];
     }
 
     CBlock block;

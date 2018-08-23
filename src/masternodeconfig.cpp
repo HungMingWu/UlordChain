@@ -102,14 +102,15 @@ CMasternodeConfig::CMasternodeEntry CMasternodeConfig::GetLocalEntry()
 
 bool CMasternodeConfig::AvailableCoins(uint256 txHash, unsigned int index)
 {
-    CTransaction tx;
-    uint256 hashBlock;
-    if(!GetTransaction(txHash, tx, Params().GetConsensus(), hashBlock, true))
+    boost::optional<CTransaction> tx;
+    boost::optional<uint256> hashBlock;
+    std::tie(tx, hashBlock) = GetTransaction(txHash, Params().GetConsensus(), true);
+    if (!tx)
     {
         LogPrintf("CMasternodeConfig::AvailableCoins -- masternode collateraloutputtxid or collateraloutputindex is error,please check it\n");
         return false;
     }
-    if (!CheckFinalTx(tx) || tx.IsCoinBase()) {
+    if (!CheckFinalTx(*tx) || tx->IsCoinBase()) {
         return false;
     }
 

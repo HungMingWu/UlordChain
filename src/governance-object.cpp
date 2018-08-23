@@ -501,19 +501,20 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError)
     CAmount nMinFee = GetMinCollateralFee();
     uint256 nExpectedHash = GetHash();
 
-    CTransaction txCollateral;
-    uint256 nBlockHash;
+    boost::optional<CTransaction> txCollateral;
+    boost::optional<uint256> nBlockHash;
+    std::tie(txCollateral, nBlockHash) = GetTransaction(nCollateralHash, Params().GetConsensus(), true);
 
     // RETRIEVE TRANSACTION IN QUESTION
 
-    if(!GetTransaction(nCollateralHash, txCollateral, Params().GetConsensus(), nBlockHash, true)){
-        strError = strprintf("Can't find collateral tx %s", txCollateral.ToString());
+    if (!txCollateral) {
+        strError = strprintf("Can't find collateral tx %s", txCollateral->ToString());
         LogPrintf("CGovernanceObject::IsCollateralValid -- %s\n", strError);
         return false;
     }
 
-    if(txCollateral.vout.size() < 1) {
-        strError = strprintf("tx vout size less than 1 | %d", txCollateral.vout.size());
+    if (txCollateral->vout.size() < 1) {
+        strError = strprintf("tx vout size less than 1 | %d", txCollateral->vout.size());
         LogPrintf("CGovernanceObject::IsCollateralValid -- %s\n", strError);
         return false;
     }
@@ -523,7 +524,7 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError)
     CScript findScript;
     findScript << OP_RETURN << ToByteVector(nExpectedHash);
 
-    DBG( cout << "IsCollateralValid txCollateral.vout.size() = " << txCollateral.vout.size() << endl; );
+    DBG( cout << "IsCollateralValid txCollateral->vout.size() = " << txCollateral->vout.size() << endl; );
 
     DBG( cout << "IsCollateralValid: findScript = " << ScriptToAsmStr( findScript, false ) << endl; );
 
@@ -531,13 +532,13 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError)
 
 
     bool foundOpReturn = false;
-    for (const CTxOut o : txCollateral.vout) {
+    for (const CTxOut o : txCollateral->vout) {
         DBG( cout << "IsCollateralValid txout : " << o.ToString()
              << ", o.nValue = " << o.nValue
              << ", o.scriptPubKey = " << ScriptToAsmStr( o.scriptPubKey, false )
              << endl; );
         if(!o.scriptPubKey.IsNormalPaymentScript() && !o.scriptPubKey.IsUnspendable()){
-            strError = strprintf("Invalid Script %s", txCollateral.ToString());
+            strError = strprintf("Invalid Script %s", txCollateral->ToString());
             LogPrintf ("CGovernanceObject::IsCollateralValid -- %s\n", strError);
             return false;
         }
@@ -552,7 +553,7 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError)
     }
 
     if(!foundOpReturn){
-        strError = strprintf("Couldn't find opReturn %s in %s", nExpectedHash.ToString(), txCollateral.ToString());
+        strError = strprintf("Couldn't find opReturn %s in %s", nExpectedHash.ToString(), txCollateral->ToString());
         LogPrintf ("CGovernanceObject::IsCollateralValid -- %s\n", strError);
         return false;
     }
@@ -561,8 +562,8 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError)
 
     LOCK(cs_main);
     int nConfirmationsIn = GetIXConfirmations(nCollateralHash);
-    if (nBlockHash != uint256()) {
-        auto it = mapBlockIndex.find(nBlockHash);
+    if (!nBlockHash) {
+        auto it = mapBlockIndex.find(*nBlockHash);
         if (it != end(mapBlockIndex) && it->second) {
             CBlockIndex* pindex = it->second;
             if (chainActive.Contains(pindex)) {

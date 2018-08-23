@@ -1612,35 +1612,41 @@ bool GetAddressUnspent(uint160 addressHash, int type,
 }
 
 /** Return transaction in tx, and if it was found inside a block, its hash is placed in hashBlock */
-bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::Params& consensusParams, uint256 &hashBlock, bool fAllowSlow)
+TractactionTuple GetTransaction(const uint256 &hash, const Consensus::Params& consensusParams, bool fAllowSlow)
 {
     CBlockIndex *pindexSlow = NULL;
 
     LOCK(cs_main);
 
-    if (mempool.lookup(hash, txOut))
-    {
-        return true;
-    }
+    boost::optional<CTransaction> txOut = mempool.lookup(hash);
+    if (txOut) return {txOut, {}};
+
+    txOut = CTransaction{};
+    boost::optional<uint256> hashBlock;
 
     if (fTxIndex) {
         CDiskTxPos postx;
         if (pblocktree->ReadTxIndex(hash, postx)) {
             CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
-            if (file.IsNull())
-                return error("%s: OpenBlockFile failed", __func__);
+            if (file.IsNull()) {
+                //return error("%s: OpenBlockFile failed", __func__);
+                return {{}, {}};
+            }
             CBlockHeader header;
             try {
                 file >> header;
                 fseek(file.Get(), postx.nTxOffset, SEEK_CUR);
-                file >> txOut;
+                file >> *txOut;
             } catch (const std::exception& e) {
-                return error("%s: Deserialize or I/O error - %s", __func__, e.what());
+                //return error("%s: Deserialize or I/O error - %s", __func__, e.what());
+                return {{}, {}};
             }
             hashBlock = header.GetHash();
-            if (txOut.GetHash() != hash)
-                return error("%s: txid mismatch", __func__);
-            return true;
+            if (txOut->GetHash() != hash) {
+                // return error("%s: txid mismatch", __func__);
+                return {{}, {}};
+            }
+            return {txOut, hashBlock};
         }
     }
 
@@ -1663,13 +1669,13 @@ bool GetTransaction(const uint256 &hash, CTransaction &txOut, const Consensus::P
                 if (tx.GetHash() == hash) {
                     txOut = tx;
                     hashBlock = pindexSlow->GetBlockHash();
-                    return true;
+                    return {txOut, hashBlock};
                 }
             }
         }
     }
 
-    return false;
+    return {{}, {}};
 }
 
 
@@ -5543,11 +5549,11 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 }
 
                 if (!pushed && inv.type == MSG_TX) {
-                    CTransaction tx;
-                    if (mempool.lookup(inv.hash, tx)) {
+                    boost::optional<CTransaction> tx = mempool.lookup(inv.hash);
+                    if (tx) {
                         CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
                         ss.reserve(1000);
-                        ss << tx;
+                        ss << *tx;
                         pfrom->PushMessage(NetMsgType::TX, ss);
                         pushed = true;
                     }
@@ -6568,10 +6574,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         for (uint256& hash : vtxid) {
             CInv inv(MSG_TX, hash);
             if (pfrom->pfilter) {
-                CTransaction tx;
-                bool fInMemPool = mempool.lookup(hash, tx);
-                if (!fInMemPool) continue; // another thread removed since queryHashes, maybe...
-                if (!pfrom->pfilter->IsRelevantAndUpdate(tx)) continue;
+                boost::optional<CTransaction> tx = mempool.lookup(hash);
+                if (!tx) continue; // another thread removed since queryHashes, maybe...
+                if (!pfrom->pfilter->IsRelevantAndUpdate(*tx)) continue;
             }
             vInv.push_back(inv);
             if (vInv.size() == MAX_INV_SZ) {

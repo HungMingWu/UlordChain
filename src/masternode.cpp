@@ -456,14 +456,15 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
 CTxDestination CMasternode::GetPayeeDestination()
 {
-    CTransaction tx;
-    uint256 hashBlock;
+    boost::optional<CTransaction> tx;
+    boost::optional<uint256> hashBlock;
     txnouttype type;
     std::vector<CTxDestination> addresses;
     int nRequired;
 
-    if (GetTransaction(vin.prevout.hash, tx, Params().GetConsensus(), hashBlock, true)) {
-        for (const CTxOut & coin : tx.vout)
+    std::tie(tx, hashBlock) = GetTransaction(vin.prevout.hash, Params().GetConsensus(), true);
+    if (tx) {
+        for (const CTxOut & coin : tx->vout)
         {
             if(coin.nValue != Params().GetConsensus().colleteral) {
                 if (ExtractDestinations(coin.scriptPubKey, type, addresses, nRequired)) {
@@ -800,12 +801,12 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
 
     // verify that sig time is legit in past
     // should be at least not earlier than block when 10000 UT tx got nMasternodeMinimumConfirmations
-    uint256 hashBlock = uint256();
-    CTransaction tx2;
-    GetTransaction(vin.prevout.hash, tx2, Params().GetConsensus(), hashBlock, true);
+    boost::optional<uint256> hashBlock;
+    boost::optional<CTransaction> tx2;
+    std::tie(tx2, hashBlock) = GetTransaction(vin.prevout.hash, Params().GetConsensus(), true);
     {
         LOCK(cs_main);
-        auto mi = mapBlockIndex.find(hashBlock);
+        auto mi = mapBlockIndex.find(*hashBlock);
         if (mi != end(mapBlockIndex) && (*mi).second) {
             CBlockIndex* pMNIndex = (*mi).second; // block for 10000 UT tx -> 1 confirmation
             CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + Params().GetConsensus().nMasternodeMinimumConfirmations - 1]; // block where tx got nMasternodeMinimumConfirmations

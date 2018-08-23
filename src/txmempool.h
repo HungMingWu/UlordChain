@@ -16,9 +16,9 @@
 #include "primitives/transaction.h"
 #include "sync.h"
 
-#undef foreach
 #include "boost/multi_index_container.hpp"
 #include "boost/multi_index/ordered_index.hpp"
+#include <boost/optional.hpp>
 
 class CAutoFile;
 class CBlockIndex;
@@ -565,7 +565,7 @@ public:
         return (mapTx.count(hash) != 0);
     }
 
-    bool lookup(uint256 hash, CTransaction& result) const;
+    boost::optional<CTransaction> lookup(uint256 hash) const;
 
     /** Estimate fee rate needed to get into the next nBlocks
      *  If no answer can be given at nBlocks, return an estimate

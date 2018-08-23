@@ -851,13 +851,12 @@ void CTxMemPool::queryHashes(vector<uint256>& vtxid)
         vtxid.push_back(mi->GetTx().GetHash());
 }
 
-bool CTxMemPool::lookup(uint256 hash, CTransaction& result) const
+boost::optional<CTransaction> CTxMemPool::lookup(uint256 hash) const
 {
     LOCK(cs);
-    indexed_transaction_set::const_iterator i = mapTx.find(hash);
-    if (i == mapTx.end()) return false;
-    result = i->GetTx();
-    return true;
+    auto it = mapTx.find(hash);
+    if (it == mapTx.end()) return {};
+    return it->GetTx();
 }
 
 CFeeRate CTxMemPool::estimateFee(int nBlocks) const
@@ -970,9 +969,9 @@ bool CCoinsViewMemPool::GetCoins(const uint256 &txid, CCoins &coins) const {
     // If an entry in the mempool exists, always return that one, as it's guaranteed to never
     // conflict with the underlying cache, and it cannot have pruned entries (as it contains full)
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
-    CTransaction tx;
-    if (mempool.lookup(txid, tx)) {
-        coins = CCoins(tx, MEMPOOL_HEIGHT);
+    boost::optional<CTransaction> tx = mempool.lookup(txid);
+    if (tx) {
+        coins = CCoins(*tx, MEMPOOL_HEIGHT);
         return true;
     }
     return (base->GetCoins(txid, coins) && !coins.IsPruned());
