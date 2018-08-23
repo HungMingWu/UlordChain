@@ -54,15 +54,14 @@ BOOST_AUTO_TEST_CASE(MempoolRemoveTest)
 
 
     CTxMemPool testPool(CFeeRate(0));
-    std::list<CTransaction> removed;
 
     // Nothing in pool, remove should do nothing:
-    testPool.remove(txParent, removed, true);
+    std::list<CTransaction> removed = testPool.remove(txParent, true);
     BOOST_CHECK_EQUAL(removed.size(), 0);
 
     // Just the parent:
     testPool.addUnchecked(txParent.GetHash(), entry.FromTx(txParent));
-    testPool.remove(txParent, removed, true);
+    removed = testPool.remove(txParent, true);
     BOOST_CHECK_EQUAL(removed.size(), 1);
     removed.clear();
     
@@ -74,16 +73,16 @@ BOOST_AUTO_TEST_CASE(MempoolRemoveTest)
         testPool.addUnchecked(txGrandChild[i].GetHash(), entry.FromTx(txGrandChild[i]));
     }
     // Remove Child[0], GrandChild[0] should be removed:
-    testPool.remove(txChild[0], removed, true);
+    removed = testPool.remove(txChild[0], true);
     BOOST_CHECK_EQUAL(removed.size(), 2);
     removed.clear();
     // ... make sure grandchild and child are gone:
-    testPool.remove(txGrandChild[0], removed, true);
+    removed = testPool.remove(txGrandChild[0], true);
     BOOST_CHECK_EQUAL(removed.size(), 0);
-    testPool.remove(txChild[0], removed, true);
+    removed = testPool.remove(txChild[0], true);
     BOOST_CHECK_EQUAL(removed.size(), 0);
     // Remove parent, all children/grandchildren should go:
-    testPool.remove(txParent, removed, true);
+    removed = testPool.remove(txParent, true);
     BOOST_CHECK_EQUAL(removed.size(), 5);
     BOOST_CHECK_EQUAL(testPool.size(), 0);
     removed.clear();
@@ -96,7 +95,7 @@ BOOST_AUTO_TEST_CASE(MempoolRemoveTest)
     }
     // Now remove the parent, as might happen if a block-re-org occurs but the parent cannot be
     // put into the mempool (maybe because it is non-standard):
-    testPool.remove(txParent, removed, true);
+    removed = testPool.remove(txParent, true);
     BOOST_CHECK_EQUAL(removed.size(), 6);
     BOOST_CHECK_EQUAL(testPool.size(), 0);
     removed.clear();
@@ -280,12 +279,11 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     BOOST_CHECK_EQUAL(pool.size(), 10);
 
     // Now try removing tx10 and verify the sort order returns to normal
-    std::list<CTransaction> removed;
-    pool.remove(pool.mapTx.find(tx10.GetHash())->GetTx(), removed, true);
+    std::list<CTransaction> removed = pool.remove(pool.mapTx.find(tx10.GetHash())->GetTx(), true);
     CheckSort<1>(pool, snapshotOrder);
 
-    pool.remove(pool.mapTx.find(tx9.GetHash())->GetTx(), removed, true);
-    pool.remove(pool.mapTx.find(tx8.GetHash())->GetTx(), removed, true);
+    removed = pool.remove(pool.mapTx.find(tx9.GetHash())->GetTx(), true);
+    removed = pool.remove(pool.mapTx.find(tx8.GetHash())->GetTx(), true);
     /* Now check the sort on the mining score index.
      * Final order should be:
      *
@@ -444,12 +442,11 @@ BOOST_AUTO_TEST_CASE(MempoolSizeLimitTest)
     pool.addUnchecked(tx7.GetHash(), entry.Fee(9000LL).FromTx(tx7, &pool));
 
     std::vector<CTransaction> vtx;
-    std::list<CTransaction> conflicts;
     SetMockTime(42);
     SetMockTime(42 + CTxMemPool::ROLLING_FEE_HALFLIFE);
     BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), maxFeeRateRemoved.GetFeePerK() + 1000);
     // ... we should keep the same min fee until we get a block
-    pool.removeForBlock(vtx, 1, conflicts);
+    std::list<CTransaction> conflicts = pool.removeForBlock(vtx, 1);
     SetMockTime(42 + 2*CTxMemPool::ROLLING_FEE_HALFLIFE);
     BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + 1000)/2);
     // ... then feerate should drop 1/2 each halflife

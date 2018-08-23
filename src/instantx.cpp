@@ -512,9 +512,8 @@ bool CInstantSend::ResolveConflicts(const CTxLockCandidate& txLockCandidate, int
         }
     } // FOREACH
     if(fMempoolConflict) {
-        std::list<CTransaction> removed;
         // remove every tx conflicting with current Transaction Lock Request
-        mempool.removeConflicts(txLockCandidate.txLockRequest, removed);
+        std::list<CTransaction> removed = mempool.removeConflicts(txLockCandidate.txLockRequest);
         // and try to accept it in mempool again
         CValidationState state;
         bool fMissingInputs = false;
