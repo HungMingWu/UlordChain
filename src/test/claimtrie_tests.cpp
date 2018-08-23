@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(claimtrie_insert_update_claim)
     for (pindex = chainActive.Tip(); pindex && pindex->pprev; pindex=pindex->pprev)
     {
         CBlock block;
-        BOOST_CHECK(ReadBlockFromDisk(block, pindex, Params().GetConsensus()));
+        BOOST_CHECK(ReadBlockFromDisk(block, *pindex, Params().GetConsensus()));
         if (pindex == pindexState && (coins.DynamicMemoryUsage() + pcoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
         {
             bool fClean = true;
@@ -336,7 +336,7 @@ BOOST_AUTO_TEST_CASE(claimtrie_insert_update_claim)
     {
         pindex = chainActive.Next(pindex);
         CBlock block;
-        BOOST_CHECK(ReadBlockFromDisk(block, pindex, Params().GetConsensus()));
+        BOOST_CHECK(ReadBlockFromDisk(block, *pindex, Params().GetConsensus()));
         BOOST_CHECK(ConnectBlock(block, state, pindex,coins,trieCache));
     }
     

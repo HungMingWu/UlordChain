@@ -431,7 +431,7 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
             mnpayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
         {
             CBlock block;
-            if(!ReadBlockFromDisk(block, BlockReading, Params().GetConsensus())) // shouldn't really happen
+            if(!ReadBlockFromDisk(block, *BlockReading, Params().GetConsensus())) // shouldn't really happen
                 continue;
 
             CAmount nMasternodePayment = GetMasternodePayment(BlockReading->nHeight);
