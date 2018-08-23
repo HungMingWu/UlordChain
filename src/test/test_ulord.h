@@ -25,7 +25,7 @@ struct BasicTestingSetup {
  * and wallet (if enabled) setup.
  */
 struct TestingSetup: public BasicTestingSetup {
-    CCoinsViewDB *pcoinsdbview;
+    std::unique_ptr<CCoinsViewDB> pcoinsdbview;
     boost::filesystem::path pathTemp;
     boost::thread_group threadGroup;
 

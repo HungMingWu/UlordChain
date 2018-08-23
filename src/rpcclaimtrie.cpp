@@ -44,7 +44,7 @@ UniValue getclaimsintrie(const UniValue& params, bool fHelp)
     LOCK(cs_main);
     UniValue ret(UniValue::VARR);
 
-    CCoinsViewCache view(pcoinsTip);
+    CCoinsViewCache view(pcoinsTip.get());
     std::vector<namedNodeType> nodes = pclaimTrie->flattenTrie();
 
     for (std::vector<namedNodeType>::iterator it = nodes.begin(); it != nodes.end(); ++it)
@@ -138,7 +138,7 @@ UniValue getclaimtrie(const UniValue& params, bool fHelp)
 
 bool getValueForClaim(const COutPoint& out, std::string& sValue)
 {
-    CCoinsViewCache view(pcoinsTip);
+    CCoinsViewCache view(pcoinsTip.get());
     const CCoins* coin = view.AccessCoins(out.hash);
     if (!coin)
     {
@@ -508,7 +508,7 @@ UniValue getclaimsfortx(const UniValue& params, bool fHelp)
     int op;
     std::vector<std::vector<unsigned char> > vvchParams;
     
-    CCoinsViewCache view(pcoinsTip);
+    CCoinsViewCache view(pcoinsTip.get());
     const CCoins* coin = view.AccessCoins(hash);
     std::vector<CTxOut> txouts;
     int nHeight = 0;

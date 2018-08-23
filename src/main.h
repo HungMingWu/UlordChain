@@ -841,7 +841,7 @@ bool ReconsiderBlock(CValidationState& state, CBlockIndex *pindex);
 extern CChain chainActive;
 
 /** Global variable that points to the active CCoinsView (protected by cs_main) */
-extern CCoinsViewCache *pcoinsTip;
+extern std::unique_ptr<CCoinsViewCache> pcoinsTip;
 
 /** Global variable that points to the active CClaimTrie (protected by cs_main) */                                                                                                                                                                                            
 extern std::unique_ptr<CClaimTrie> pclaimTrie;

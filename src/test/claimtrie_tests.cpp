@@ -316,7 +316,7 @@ BOOST_AUTO_TEST_CASE(claimtrie_insert_update_claim)
 
     //FlushStateToDisk();
 
-    CCoinsViewCache coins(pcoinsTip);
+    CCoinsViewCache coins(pcoinsTip.get());
     CClaimTrieCache trieCache(*pclaimTrie);
     CBlockIndex* pindexState = chainActive.Tip();
     CValidationState state;
