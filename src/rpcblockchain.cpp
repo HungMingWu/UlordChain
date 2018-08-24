@@ -571,24 +571,24 @@ UniValue getblock(const UniValue& params, bool fHelp)
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-    CBlock block;
     CBlockIndex* pblockindex = mapBlockIndex[hash];
 
     if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
-    if(!ReadBlockFromDisk(block, *pblockindex, Params().GetConsensus()))
+    Opt<CBlock> block = ReadBlockFromDisk(*pblockindex, Params().GetConsensus());
+    if (!block)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     if (!fVerbose)
     {
         CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
-        ssBlock << block;
+        ssBlock << *block;
         std::string strHex = HexStr(ssBlock.begin(), ssBlock.end());
         return strHex;
     }
 
-    return blockToJSON(block, pblockindex);
+    return blockToJSON(*block, pblockindex);
 }
 
 UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)

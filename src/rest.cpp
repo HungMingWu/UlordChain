@@ -213,7 +213,7 @@ static bool rest_block(HTTPRequest* req,
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    CBlock block;
+    Opt<CBlock> block;
     CBlockIndex* pblockindex = NULL;
     {
         LOCK(cs_main);
@@ -224,12 +224,13 @@ static bool rest_block(HTTPRequest* req,
         if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not available (pruned data)");
 
-        if (!ReadBlockFromDisk(block, *pblockindex, Params().GetConsensus()))
+        block = ReadBlockFromDisk(*pblockindex, Params().GetConsensus());
+        if (!block)
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
     }
 
     CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
-    ssBlock << block;
+    ssBlock << *block;
 
     switch (rf) {
     case RF_BINARY: {
@@ -247,7 +248,7 @@ static bool rest_block(HTTPRequest* req,
     }
 
     case RF_JSON: {
-        UniValue objBlock = blockToJSON(block, pblockindex, showTxDetails);
+        UniValue objBlock = blockToJSON(*block, pblockindex, showTxDetails);
         string strJSON = objBlock.write() + "\n";
         req->WriteHeader("Content-Type", "application/json");
         req->WriteReply(HTTP_OK, strJSON);

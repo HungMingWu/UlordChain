@@ -310,19 +310,19 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
         pblockindex = mapBlockIndex[*hashBlock];
     }
 
-    CBlock block;
-    if(!ReadBlockFromDisk(block, *pblockindex, Params().GetConsensus()))
+    Opt<CBlock> block = ReadBlockFromDisk(*pblockindex, Params().GetConsensus());
+    if (!block)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     unsigned int ntxFound = 0;
-    for (const CTransaction&tx : block.vtx)
+    for (const CTransaction&tx : block->vtx)
         if (setTxids.count(tx.GetHash()))
             ntxFound++;
     if (ntxFound != setTxids.size())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "(Not all) transactions not found in specified block");
 
     CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION);
-    CMerkleBlock mb(block, setTxids);
+    CMerkleBlock mb(*block, setTxids);
     ssMB << mb;
     std::string strHex = HexStr(ssMB.begin(), ssMB.end());
     return strHex;

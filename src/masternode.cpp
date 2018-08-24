@@ -430,13 +430,13 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
         if(mnpayments.mapMasternodeBlocks.count(BlockReading->nHeight) &&
             mnpayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2))
         {
-            CBlock block;
-            if(!ReadBlockFromDisk(block, *BlockReading, Params().GetConsensus())) // shouldn't really happen
+            Opt<CBlock> block = ReadBlockFromDisk(*BlockReading, Params().GetConsensus());
+            if (!block) // shouldn't really happen
                 continue;
 
             CAmount nMasternodePayment = GetMasternodePayment(BlockReading->nHeight);
 
-            for (CTxOut txout : block.vtx[0].vout)
+            for (CTxOut txout : block->vtx[0].vout)
                 if(mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
                     nBlockLastPaid = BlockReading->nHeight;
                     nTimeLastPaid = BlockReading->nTime;

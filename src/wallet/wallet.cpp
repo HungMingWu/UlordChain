@@ -1463,11 +1463,10 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
             if (pindex->nHeight % 100 == 0 && dProgressTip - dProgressStart > 0.0)
                 ShowProgress(_("Rescanning..."), std::max(1, std::min(99, (int)((Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false) - dProgressStart) / (dProgressTip - dProgressStart) * 100))));
 
-            CBlock block;
-            ReadBlockFromDisk(block, *pindex, Params().GetConsensus());
-            for (CTransaction& tx : block.vtx)
+            Opt<CBlock> block = ReadBlockFromDisk(*pindex, Params().GetConsensus());
+            for (CTransaction& tx : block->vtx)
             {
-                if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+                if (AddToWalletIfInvolvingMe(tx, &block.get(), fUpdate))
                     ret++;
             }
             pindex = chainActive.Next(pindex);

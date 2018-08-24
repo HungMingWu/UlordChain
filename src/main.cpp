@@ -1715,9 +1715,9 @@ TractactionTuple GetTransaction(const uint256 &hash, const Consensus::Params& co
     }
 
     if (pindexSlow) {
-        CBlock block;
-        if (ReadBlockFromDisk(block, *pindexSlow, consensusParams)) {
-            for (const CTransaction &tx : block.vtx) {
+        Opt<CBlock> block = ReadBlockFromDisk(*pindexSlow, consensusParams);
+        if (block) {
+            for (const CTransaction &tx : block->vtx) {
                 if (tx.GetHash() == hash) {
                     txOut = tx;
                     hashBlock = pindexSlow->GetBlockHash();
@@ -1761,41 +1761,48 @@ bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos, const CMessageHea
     return true;
 }
 
-bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus::Params& consensusParams)
+Opt<CBlock> ReadBlockFromDisk(const CDiskBlockPos& pos, const Consensus::Params& consensusParams)
 {
-    block.SetNull();
-
     // Open history file to read
     CAutoFile filein(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION);
-    if (filein.IsNull())
-        return error("ReadBlockFromDisk: OpenBlockFile failed for %s", pos.ToString());
+    if (filein.IsNull()) {
+        error("ReadBlockFromDisk: OpenBlockFile failed for %s", pos.ToString());
+        return {};
+    }
 
+    CBlock block;
+    block.SetNull();
     // Read block
     try {
         filein >> block;
     }
     catch (const std::exception& e) {
-        return error("%s: Deserialize or I/O error - %s at %s", __func__, e.what(), pos.ToString());
+        error("%s: Deserialize or I/O error - %s at %s", __func__, e.what(), pos.ToString());
+        return {};
     }
 
     // Check the header
 
 //arith_uint256 k = UintToArith256(block.GetHash());
 //LogPrintf("\t\t\tblock = %s\n\t\t\thash = %s\n\t\t\tarith hash = %s\n", block.ToString().c_str(), block.GetHash().ToString().c_str(), k.ToString().c_str());	
-    if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
-        return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams)) {
+        error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+        return {};
+    }
 
-    return true;
+    return block;
 }
 
-bool ReadBlockFromDisk(CBlock& block, const CBlockIndex &index, const Consensus::Params& consensusParams)
+Opt<CBlock> ReadBlockFromDisk(const CBlockIndex &index, const Consensus::Params& consensusParams)
 {
-    if (!ReadBlockFromDisk(block, index.GetBlockPos(), consensusParams))
-        return false;
-    if (block.GetHash() != index.GetBlockHash())
-        return error("ReadBlockFromDisk(CBlock&, CBlockIndex*): GetHash() doesn't match index for %s at %s",
+    Opt<CBlock> block = ReadBlockFromDisk(index.GetBlockPos(), consensusParams);
+    if (!block) return {};
+    if (block->GetHash() != index.GetBlockHash()) {
+        error("ReadBlockFromDisk(CBlock&, CBlockIndex*): GetHash() doesn't match index for %s at %s",
                 index.ToString(), index.GetBlockPos().ToString());
-    return true;
+        return {};
+    }
+    return block;
 }
 
 CAmount GetMinerSubsidy(const int height, const Consensus::Params &cp)
@@ -3527,15 +3534,15 @@ bool static DisconnectTip(CValidationState& state, const Consensus::Params& cons
     CBlockIndex *pindexDelete = chainActive.Tip();
     assert(pindexDelete);
     // Read block from disk.
-    CBlock block;
-    if (!ReadBlockFromDisk(block, *pindexDelete, consensusParams))
+    Opt<CBlock> block = ReadBlockFromDisk(*pindexDelete, consensusParams);
+    if (!block)
         return AbortNode(state, "Failed to read block");
     // Apply the block atomically to the chain state.
     int64_t nStart = GetTimeMicros();
     {
         CCoinsViewCache view(pcoinsTip.get());
         CClaimTrieCache trieCache(*pclaimTrie);
-        if (!DisconnectBlock(block, state, pindexDelete, view, trieCache))
+        if (!DisconnectBlock(*block, state, pindexDelete, view, trieCache))
             return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         assert(view.Flush());
         assert(trieCache.flush());
@@ -3547,7 +3554,7 @@ bool static DisconnectTip(CValidationState& state, const Consensus::Params& cons
         return false;
     // Resurrect mempool transactions from the disconnected block.
     std::vector<uint256> vHashUpdate;
-    for (const CTransaction &tx : block.vtx) {
+    for (const CTransaction &tx : block->vtx) {
         // ignore validation errors in resurrected transactions
         CValidationState stateDummy;
         if (tx.IsCoinBase() || !AcceptToMemoryPool(mempool, stateDummy, tx, false, NULL, true)) {
@@ -3566,7 +3573,7 @@ bool static DisconnectTip(CValidationState& state, const Consensus::Params& cons
     UpdateTip(pindexDelete->pprev);
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
-    for (const CTransaction &tx : block.vtx) {
+    for (const CTransaction &tx : block->vtx) {
         SyncWithWallets(tx, NULL);
     }
     return true;
@@ -3587,11 +3594,12 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     assert(pindexNew->pprev == chainActive.Tip());
     // Read block from disk.
     int64_t nTime1 = GetTimeMicros();
-    CBlock block;
+    Opt<CBlock> block;
     if (!pblock) {
-        if (!ReadBlockFromDisk(block, *pindexNew, chainparams.GetConsensus()))
+        block = ReadBlockFromDisk(*pindexNew, chainparams.GetConsensus());
+        if (!block)
             return AbortNode(state, "Failed to read block");
-        pblock = &block;
+        pblock = &block.get();
     }
     // Apply the block atomically to the chain state.
     int64_t nTime2 = GetTimeMicros(); nTimeReadFromDisk += nTime2 - nTime1;
@@ -4932,12 +4940,12 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
         if (pindex->nHeight < chainActive.Height()-nCheckDepth)
             break;
-        CBlock block;
         // check level 0: read from disk
-        if (!ReadBlockFromDisk(block, *pindex, chainparams.GetConsensus()))
+        Opt<CBlock> block = ReadBlockFromDisk(*pindex, chainparams.GetConsensus());
+        if (!block)
             return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !CheckBlock(block, state))
+        if (nCheckLevel >= 1 && !CheckBlock(*block, state))
             return error("VerifyDB(): *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
@@ -4951,14 +4959,14 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + pcoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage) {
             bool fClean = true;
-            if (!DisconnectBlock(block, state, pindex, coins, trieCache, &fClean))
+            if (!DisconnectBlock(*block, state, pindex, coins, trieCache, &fClean))
                 return error("VerifyDB(): *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             pindexState = pindex->pprev;
             if (!fClean) {
                 nGoodTransactions = 0;
                 pindexFailure = pindex;
             } else
-                nGoodTransactions += block.vtx.size();
+                nGoodTransactions += block->vtx.size();
         }
         if (ShutdownRequested())
             return true;
@@ -4973,10 +4981,10 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             boost::this_thread::interruption_point();
             uiInterface.ShowProgress(_("Verifying blocks..."), std::max(1, std::min(99, 100 - (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
             pindex = chainActive.Next(pindex);
-            CBlock block;
-            if (!ReadBlockFromDisk(block, *pindex, chainparams.GetConsensus()))
+            Opt<CBlock> block = ReadBlockFromDisk(*pindex, chainparams.GetConsensus());
+            if (!block)
                 return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
-            if (!ConnectBlock(block, state, pindex, coins, trieCache))
+            if (!ConnectBlock(*block, state, pindex, coins, trieCache))
                 return error("VerifyDB(): *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
     }
@@ -5000,16 +5008,15 @@ bool GetProofForName(const CBlockIndex* pindexProof, const std::string& name, CC
     for (CBlockIndex *pindex = chainActive.Tip(); pindex && pindex->pprev && pindexState != pindexProof; pindex=pindex->pprev)
     {   
         boost::this_thread::interruption_point();
-        CBlock block;
-        if (!ReadBlockFromDisk(block, *pindex, Params().GetConsensus()))
+        Opt<CBlock> block = ReadBlockFromDisk(*pindex, Params().GetConsensus());
+        if (!block)
         {   
             return false;
         }
         if (pindex == pindexState && (coins.DynamicMemoryUsage() + pcoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
         {   
             bool fClean = true;
-            if (!DisconnectBlock(block, state, pindex, coins, trieCache, &fClean))                                                                                                                                                                                            
-            {   
+            if (!DisconnectBlock(*block, state, pindex, coins, trieCache, &fClean)) {
                 return false;
             }
             pindexState = pindex->pprev;
@@ -5194,15 +5201,16 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                     std::pair<std::multimap<uint256, CDiskBlockPos>::iterator, std::multimap<uint256, CDiskBlockPos>::iterator> range = mapBlocksUnknownParent.equal_range(head);
                     while (range.first != range.second) {
                         std::multimap<uint256, CDiskBlockPos>::iterator it = range.first;
-                        if (ReadBlockFromDisk(block, it->second, chainparams.GetConsensus()))
+                        Opt<CBlock> rangeblock = ReadBlockFromDisk(it->second, chainparams.GetConsensus());
+                        if (rangeblock)
                         {
-                            LogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(),
+                            LogPrintf("%s: Processing out of order child %s of %s\n", __func__, rangeblock->GetHash().ToString(),
                                     head.ToString());
                             CValidationState dummy;
-                            if (ProcessNewBlock(dummy, chainparams, NULL, &block, true, &it->second))
+                            if (ProcessNewBlock(dummy, chainparams, NULL, &rangeblock.get(), true, &it->second))
                             {
                                 nLoaded++;
-                                queue.push_back(block.GetHash());
+                                queue.push_back(rangeblock->GetHash());
                             }
                         }
                         range.first++;
@@ -5611,17 +5619,17 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                 // it's available before trying to send.
                 if (send && (mi->second->nStatus & BLOCK_HAVE_DATA)) {
                     // Send block from disk
-                    CBlock block;
-                    if (!ReadBlockFromDisk(block, *((*mi).second), consensusParams))
+                    Opt<CBlock> block = ReadBlockFromDisk(*((*mi).second), consensusParams);
+                    if (!block)
                         assert(!"cannot load block from disk");
                     if (inv.type == MSG_BLOCK)
-                        pfrom->PushMessage(NetMsgType::BLOCK, block);
+                        pfrom->PushMessage(NetMsgType::BLOCK, *block);
                     else // MSG_FILTERED_BLOCK)
                     {
                         LOCK(pfrom->cs_filter);
                         if (pfrom->pfilter)
                         {
-                            CMerkleBlock merkleBlock(block, *pfrom->pfilter);
+                            CMerkleBlock merkleBlock(*block, *pfrom->pfilter);
                             pfrom->PushMessage(NetMsgType::MERKLEBLOCK, merkleBlock);
                             // CMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
                             // This avoids hurting performance by pointlessly requiring a round-trip
@@ -5631,7 +5639,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                             // however we MUST always provide at least what the remote peer needs
                             typedef std::pair<unsigned int, uint256> PairType;
                             for (PairType& pair : merkleBlock.vMatchedTxn)
-                                pfrom->PushMessage(NetMsgType::TX, block.vtx[pair.first]);
+                                pfrom->PushMessage(NetMsgType::TX, block->vtx[pair.first]);
                         }
                         // else
                             // no response
