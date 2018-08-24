@@ -14,8 +14,8 @@
  * each bit in the bitmask represents the availability of one output, but the
  * availabilities of the first two outputs are encoded separately
  */
-void CCoins::CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const {
-    unsigned int nLastUsedByte = 0;
+std::tuple<unsigned int, unsigned int> CCoins::CalcMaskSize() const {
+    unsigned int nLastUsedByte = 0, nBytes = 0, nNonzeroBytes = 0;
     for (unsigned int b = 0; 2+b*8 < vout.size(); b++) {
         bool fZero = true;
         for (unsigned int i = 0; i < 8 && 2+b*8+i < vout.size(); i++) {
@@ -30,6 +30,7 @@ void CCoins::CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) con
         }
     }
     nBytes += nLastUsedByte;
+    return {nBytes, nNonzeroBytes};
 }
 
 bool CCoins::Spend(uint32_t nPos) 

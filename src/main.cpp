@@ -2287,31 +2287,36 @@ bool UndoWriteToDisk(const CBlockUndo& blockundo, CDiskBlockPos& pos, const uint
     return true;
 }
 
-bool UndoReadFromDisk(CBlockUndo& blockundo, const CDiskBlockPos& pos, const uint256& hashBlock)
+Opt<CBlockUndo> UndoReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock)
 {
     // Open history file to read
     CAutoFile filein(OpenUndoFile(pos, true), SER_DISK, CLIENT_VERSION);
-    if (filein.IsNull())
-        return error("%s: OpenBlockFile failed", __func__);
+    if (filein.IsNull()) {
+        error("%s: OpenBlockFile failed", __func__);
+        return {};
+    }
 
     // Read block
     uint256 hashChecksum;
+    CBlockUndo blockundo;
     try {
         filein >> blockundo;
         filein >> hashChecksum;
     }
     catch (const std::exception& e) {
-        return error("%s: Deserialize or I/O error - %s", __func__, e.what());
+        error("%s: Deserialize or I/O error - %s", __func__, e.what());
+        return {};
     }
 
     // Verify checksum
     CHashWriter hasher(SER_GETHASH, PROTOCOL_VERSION);
     hasher << hashBlock;
     hasher << blockundo;
-    if (hashChecksum != hasher.GetHash())
-        return error("%s: Checksum mismatch", __func__);
-
-    return true;
+    if (hashChecksum != hasher.GetHash()) {
+        error("%s: Checksum mismatch", __func__);
+        return {};
+    }
+    return blockundo;
 }
 
 /** Abort with a message */
@@ -2434,21 +2439,21 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
     bool fClean = true;
 
-    CBlockUndo blockUndo;
     CDiskBlockPos pos = pindex->GetUndoPos();
     if (pos.IsNull())
         return error("DisconnectBlock(): no undo data available");
-    if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
+    Opt<CBlockUndo> blockUndo = UndoReadFromDisk(pos, pindex->pprev->GetBlockHash());
+    if (!blockUndo)
         return error("DisconnectBlock(): failure reading undo data");
 
-    if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
+    if (blockUndo->vtxundo.size() + 1 != block.vtx.size())
         return error("DisconnectBlock(): block and undo data inconsistent");
 
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
 
-    assert(trieCache.decrementBlock(blockUndo.insertUndo, blockUndo.expireUndo, blockUndo.insertSupportUndo, blockUndo.expireSupportUndo, blockUndo.takeoverHeightUndo));
+    assert(trieCache.decrementBlock(blockUndo->insertUndo, blockUndo->expireUndo, blockUndo->insertSupportUndo, blockUndo->expireSupportUndo, blockUndo->takeoverHeightUndo));
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -2541,7 +2546,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
         // restore inputs
         if (i > 0) { // not coinbases
-            const CTxUndo &txundo = blockUndo.vtxundo[i-1];
+            const CTxUndo &txundo = blockUndo->vtxundo[i-1];
             if (txundo.vprevout.size() != tx.vin.size())
                 return error("DisconnectBlock(): transaction and undo data inconsistent");
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
@@ -4949,10 +4954,10 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             return error("VerifyDB(): *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
-            CBlockUndo undo;
             CDiskBlockPos pos = pindex->GetUndoPos();
             if (!pos.IsNull()) {
-                if (!UndoReadFromDisk(undo, pos, pindex->pprev->GetBlockHash()))
+                Opt<CBlockUndo> undo = UndoReadFromDisk(pos, pindex->pprev->GetBlockHash());
+                if (!undo)
                     return error("VerifyDB(): *** found bad undo data at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }

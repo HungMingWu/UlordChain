@@ -15,6 +15,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <unordered_map>
+#include <tuple>
 
 /** 
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
@@ -144,7 +145,7 @@ public:
         return !(a == b);
     }
 
-    void CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const;
+    std::tuple<unsigned int, unsigned int> CalcMaskSize() const;
 
     bool IsCoinBase() const {
         return fCoinBase;
@@ -152,8 +153,8 @@ public:
 
     unsigned int GetSerializeSize(int nType, int nVersion) const {
         unsigned int nSize = 0;
-        unsigned int nMaskSize = 0, nMaskCode = 0;
-        CalcMaskSize(nMaskSize, nMaskCode);
+        unsigned int nMaskSize, nMaskCode;
+	std::tie(nMaskSize, nMaskCode) = CalcMaskSize();
         bool fFirst = vout.size() > 0 && !vout[0].IsNull();
         bool fSecond = vout.size() > 1 && !vout[1].IsNull();
         assert(fFirst || fSecond || nMaskCode);
@@ -175,8 +176,8 @@ public:
 
     template<typename Stream>
     void Serialize(Stream &s, int nType, int nVersion) const {
-        unsigned int nMaskSize = 0, nMaskCode = 0;
-        CalcMaskSize(nMaskSize, nMaskCode);
+        unsigned int nMaskSize, nMaskCode;
+	std::tie(nMaskSize, nMaskCode) = CalcMaskSize();
         bool fFirst = vout.size() > 0 && !vout[0].IsNull();
         bool fSecond = vout.size() > 1 && !vout[1].IsNull();
         assert(fFirst || fSecond || nMaskCode);
