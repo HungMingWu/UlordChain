@@ -2705,14 +2705,13 @@ int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Para
     return nVersion;
 }
 
-bool GetBlockHash(uint256& hashRet, int nBlockHeight)
+Opt<uint256> GetBlockHash(int nBlockHeight)
 {
     LOCK(cs_main);
-    if(chainActive.Tip() == NULL) return false;
-    if(nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return false;
-    if(nBlockHeight == -1) nBlockHeight = chainActive.Height();
-    hashRet = chainActive[nBlockHeight]->GetBlockHash();
-    return true;
+    if (chainActive.Tip() == nullptr) return {};
+    if (nBlockHeight < -1 || nBlockHeight > chainActive.Height()) return {};
+    if (nBlockHeight == -1) nBlockHeight = chainActive.Height();
+    return chainActive[nBlockHeight]->GetBlockHash();
 }
 
 /**

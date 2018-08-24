@@ -482,8 +482,8 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight)
 
 bool CMasternodePayments::AddPaymentVote(const CMasternodePaymentVote& vote)
 {
-    uint256 blockHash = uint256();
-    if(!GetBlockHash(blockHash, vote.nBlockHeight - 101)) return false;
+    Opt<uint256> blockHash = GetBlockHash(vote.nBlockHeight - 101);
+    if (!blockHash) return false;
 
     if(HasVerifiedPaymentVote(vote.GetHash())) return false;
 
@@ -935,9 +935,9 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
         )
         // END DEBUG
         // Low data block found, let's try to sync it
-        uint256 hash;
-        if(GetBlockHash(hash, it->first)) {
-            vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, hash));
+        Opt<uint256> hash = GetBlockHash(it->first);
+        if (hash) {
+            vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, *hash));
         }
         // We should not violate GETDATA rules
         if(vToFetch.size() == MAX_INV_SZ) {

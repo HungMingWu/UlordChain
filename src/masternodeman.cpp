@@ -660,8 +660,8 @@ CMasternodePtr CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeig
     // Sort them low to high
     sort(vecMasternodeLastPaid.begin(), vecMasternodeLastPaid.end(), CompareLastPaidBlock());
 
-    uint256 blockHash;
-    if(!GetBlockHash(blockHash, nBlockHeight - 101)) {
+    Opt<uint256> blockHash = GetBlockHash(nBlockHeight - 101);
+    if (!blockHash) {
         LogPrintf("CMasternode::GetNextMasternodeInQueueForPayment -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight - 101);
         return NULL;
     }
@@ -673,7 +673,7 @@ CMasternodePtr CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeig
     int nCountTenth = 0;
     arith_uint256 nHighest = 0;
     for (auto &s : vecMasternodeLastPaid){
-        arith_uint256 nScore = s.second->CalculateScore(blockHash);
+        arith_uint256 nScore = s.second->CalculateScore(*blockHash);
         if(nScore > nHighest){
             nHighest = nScore;
             pBestMasternode = s.second;
@@ -732,8 +732,8 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int nBlockHeight, int nM
     std::vector<std::pair<int64_t, CMasternodePtr> > vecMasternodeScores;
 
     //make sure we know about this block
-    uint256 blockHash = uint256();
-    if(!GetBlockHash(blockHash, nBlockHeight)) return -1;
+    Opt<uint256> blockHash = GetBlockHash(nBlockHeight);
+    if (!blockHash) return -1;
 
     LOCK(cs);
 
@@ -746,7 +746,7 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int nBlockHeight, int nM
         else {
             if(!mn.IsValidForPayment()) continue;
         }
-        int64_t nScore = mn.CalculateScore(blockHash).GetCompact(false);
+        int64_t nScore = mn.CalculateScore(*blockHash).GetCompact(false);
 
         vecMasternodeScores.push_back(std::make_pair(nScore, CMasternodePtr{&mn}));
     }
@@ -768,8 +768,8 @@ std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int
     std::vector<std::pair<int, CMasternode> > vecMasternodeRanks;
 
     //make sure we know about this block
-    uint256 blockHash = uint256();
-    if(!GetBlockHash(blockHash, nBlockHeight)) return vecMasternodeRanks;
+    Opt<uint256> blockHash = GetBlockHash(nBlockHeight);
+    if (!blockHash) return vecMasternodeRanks;
 
     LOCK(cs);
 
@@ -778,7 +778,7 @@ std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int
 
         if(mn.nProtocolVersion < nMinProtocol || !mn.IsEnabled()) continue;
 
-        int64_t nScore = mn.CalculateScore(blockHash).GetCompact(false);
+        int64_t nScore = mn.CalculateScore(*blockHash).GetCompact(false);
 
         vecMasternodeScores.push_back(std::make_pair(nScore, CMasternodePtr{&mn}));
     }
@@ -800,8 +800,8 @@ CMasternodePtr CMasternodeMan::GetMasternodeByRank(int nRank, int nBlockHeight, 
 
     LOCK(cs);
 
-    uint256 blockHash;
-    if(!GetBlockHash(blockHash, nBlockHeight)) {
+    Opt<uint256> blockHash = GetBlockHash(nBlockHeight);
+    if (!blockHash) {
         LogPrintf("CMasternode::GetMasternodeByRank -- ERROR: GetBlockHash() failed at nBlockHeight %d\n", nBlockHeight);
         return NULL;
     }
@@ -812,7 +812,7 @@ CMasternodePtr CMasternodeMan::GetMasternodeByRank(int nRank, int nBlockHeight, 
         if(mn.nProtocolVersion < nMinProtocol) continue;
         if(fOnlyActive && !mn.IsEnabled()) continue;
 
-        int64_t nScore = mn.CalculateScore(blockHash).GetCompact(false);
+        int64_t nScore = mn.CalculateScore(*blockHash).GetCompact(false);
 
         vecMasternodeScores.push_back(std::make_pair(nScore, CMasternodePtr{&mn}));
     }
@@ -1208,13 +1208,13 @@ void CMasternodeMan::SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv)
         return;
     }
 
-    uint256 blockHash;
-    if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
+    Opt<uint256> blockHash = GetBlockHash(mnv.nBlockHeight);
+    if (!blockHash) {
         LogPrintf("MasternodeMan::SendVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->id);
         return;
     }
 
-    std::string strMessage = strprintf("%s%d%s", activeMasternode.service.ToString(false), mnv.nonce, blockHash.ToString());
+    std::string strMessage = strprintf("%s%d%s", activeMasternode.service.ToString(false), mnv.nonce, blockHash->ToString());
 
     if(!privSendSigner.SignMessage(strMessage, mnv.vchSig1, activeMasternode.keyMasternode)) {
         LogPrintf("MasternodeMan::SendVerifyReply -- SignMessage() failed\n");
@@ -1259,8 +1259,8 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
         return;
     }
 
-    uint256 blockHash;
-    if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
+    Opt<uint256> blockHash = GetBlockHash(mnv.nBlockHeight);
+    if (!blockHash) {
         // this shouldn't happen...
         LogPrintf("MasternodeMan::ProcessVerifyReply -- can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->id);
         return;
@@ -1278,7 +1278,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
 
         CMasternodePtr prealMasternode;
         std::vector<CMasternodePtr> vpMasternodesToBan;
-        std::string strMessage1 = strprintf("%s%d%s", pnode->addr.ToString(false), mnv.nonce, blockHash.ToString());
+        std::string strMessage1 = strprintf("%s%d%s", pnode->addr.ToString(false), mnv.nonce, blockHash->ToString());
         for (auto &node : vMasternodes) {
             if((CAddress)node.addr == pnode->addr) {
                 if(privSendSigner.VerifyMessage(node.pubKeyMasternode, mnv.vchSig1, strMessage1, strError)) {
@@ -1295,7 +1295,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
                     mnv.addr = node.addr;
                     mnv.vin1 = node.vin;
                     mnv.vin2 = activeMasternode.vin;
-                    std::string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash.ToString(),
+                    std::string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash->ToString(),
                                             mnv.vin1.prevout.ToStringShort(), mnv.vin2.prevout.ToStringShort());
                     // ... and sign it
                     if(!privSendSigner.SignMessage(strMessage2, mnv.vchSig2, activeMasternode.keyMasternode)) {
@@ -1365,8 +1365,8 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
         return;
     }
 
-    uint256 blockHash;
-    if(!GetBlockHash(blockHash, mnv.nBlockHeight)) {
+    Opt<uint256> blockHash = GetBlockHash(mnv.nBlockHeight);
+    if (!blockHash) {
         // this shouldn't happen...
         LogPrintf("MasternodeMan::ProcessVerifyBroadcast -- Can't get block hash for unknown block height %d, peer=%d\n", mnv.nBlockHeight, pnode->id);
         return;
@@ -1382,8 +1382,8 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
     {
         LOCK(cs);
 
-        std::string strMessage1 = strprintf("%s%d%s", mnv.addr.ToString(false), mnv.nonce, blockHash.ToString());
-        std::string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash.ToString(),
+        std::string strMessage1 = strprintf("%s%d%s", mnv.addr.ToString(false), mnv.nonce, blockHash->ToString());
+        std::string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash->ToString(),
                                 mnv.vin1.prevout.ToStringShort(), mnv.vin2.prevout.ToStringShort());
 
         CMasternodePtr pmn1 = Find(mnv.vin1);

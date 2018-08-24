@@ -47,6 +47,9 @@ class CValidationState;
 struct CNodeStateStats;
 struct LockPoints;
 
+template <typename T>
+using Opt = boost::optional<T>;
+
 // enough number of block delete map about name
 #define MIN_ACCOUNT_NAME_NUMBER 100 
 
@@ -876,7 +879,7 @@ int32_t ComputeBlockVersion(const CBlockIndex* pindexPrev, const Consensus::Para
  * Return true if hash can be found in chainActive at nBlockHeight height.
  * Fills hashRet with found hash, if no nBlockHeight is specified - chainActive.Height() is used.
  */
-bool GetBlockHash(uint256& hashRet, int nBlockHeight = -1);
+Opt<uint256> GetBlockHash(int nBlockHeight = -1);
 
 /** Reject codes greater or equal to this can be returned by AcceptToMemPool
  * for transactions, to signal internal conditions. They cannot and should not
