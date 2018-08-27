@@ -879,15 +879,15 @@ bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp, bool 
         prevheights.resize(tx.vin.size());
         for (size_t txinIndex = 0; txinIndex < tx.vin.size(); txinIndex++) {
             const CTxIn& txin = tx.vin[txinIndex];
-            CCoins coins;
-            if (!viewMemPool.GetCoins(txin.prevout.hash, coins)) {
+            Opt<CCoins> coins = viewMemPool.GetCoins(txin.prevout.hash);
+            if (!coins) {
                 return error("%s: Missing input", __func__);
             }
-            if (coins.nHeight == MEMPOOL_HEIGHT) {
+            if (coins->nHeight == MEMPOOL_HEIGHT) {
                 // Assume all mempool transaction confirm in the next block
                 prevheights[txinIndex] = tip->nHeight + 1;
             } else {
-                prevheights[txinIndex] = coins.nHeight;
+                prevheights[txinIndex] = coins->nHeight;
             }
         }
         lockPair = CalculateSequenceLocks(tx, flags, &prevheights, index);
@@ -953,13 +953,13 @@ unsigned int GetP2SHSigOpCount(const CTransaction& tx, const CCoinsViewCache& in
 int GetUTXOHeight(const COutPoint& outpoint)
 {
     LOCK(cs_main);
-    CCoins coins;
-    if(!pcoinsTip->GetCoins(outpoint.hash, coins) ||
-       (unsigned int)outpoint.n>=coins.vout.size() ||
-       coins.vout[outpoint.n].IsNull()) {
+    Opt<CCoins> coins = pcoinsTip->GetCoins(outpoint.hash);
+    if (!coins ||
+       (unsigned int)outpoint.n>=coins->vout.size() ||
+       coins->vout[outpoint.n].IsNull()) {
         return -1;
     }
-    return coins.nHeight;
+    return coins->nHeight;
 }
 
 int GetInputAge(const CTxIn &txin)

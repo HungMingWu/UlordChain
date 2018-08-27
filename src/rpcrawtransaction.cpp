@@ -294,9 +294,9 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
         pblockindex = mapBlockIndex[*hashBlock];
     } else {
-        CCoins coins;
-        if (pcoinsTip->GetCoins(oneTxid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
-            pblockindex = chainActive[coins.nHeight];
+        Opt<CCoins> coins = pcoinsTip->GetCoins(oneTxid);
+        if (coins && coins->nHeight > 0 && coins->nHeight <= chainActive.Height())
+            pblockindex = chainActive[coins->nHeight];
     }
 
     if (pblockindex == NULL)

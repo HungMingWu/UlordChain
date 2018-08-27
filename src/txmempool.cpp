@@ -970,16 +970,17 @@ bool CTxMemPool::HasNoInputsOf(const CTransaction &tx) const
 
 CCoinsViewMemPool::CCoinsViewMemPool(CCoinsView *baseIn, CTxMemPool &mempoolIn) : CCoinsViewBacked(baseIn), mempool(mempoolIn) { }
 
-bool CCoinsViewMemPool::GetCoins(const uint256 &txid, CCoins &coins) const {
+Opt<CCoins> CCoinsViewMemPool::GetCoins(const uint256 &txid) const {
     // If an entry in the mempool exists, always return that one, as it's guaranteed to never
     // conflict with the underlying cache, and it cannot have pruned entries (as it contains full)
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
     boost::optional<CTransaction> tx = mempool.lookup(txid);
     if (tx) {
-        coins = CCoins(*tx, MEMPOOL_HEIGHT);
-        return true;
+        return CCoins(*tx, MEMPOOL_HEIGHT);
     }
-    return (base->GetCoins(txid, coins) && !coins.IsPruned());
+    Opt<CCoins> coins = base->GetCoins(txid);
+    if (!coins || coins->IsPruned()) return {};
+    return coins;
 }
 
 bool CCoinsViewMemPool::HaveCoins(const uint256 &txid) const {

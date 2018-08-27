@@ -1020,10 +1020,10 @@ UniValue getcointip(const UniValue& params, bool fHelp)
     uint256 txid = ParseHashV(txidValue, "txid");
     int outputIndex = indexValue.get_int();
 
-    CCoins coins;
-    if(!pcoinsTip->GetCoins(txid, coins) ||
-       (unsigned int)outputIndex>=coins.vout.size() ||
-       coins.vout[outputIndex].IsNull()) {
+    Opt<CCoins> coins = pcoinsTip->GetCoins(txid);
+    if (!coins ||
+       (unsigned int)outputIndex>=coins->vout.size() ||
+       coins->vout[outputIndex].IsNull()) {
         LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Failed to find Masternode UTXO, masternode=%s\n", txid.ToString());
         return false;
     }

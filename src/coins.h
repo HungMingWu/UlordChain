@@ -16,6 +16,10 @@
 #include <stdint.h>
 #include <unordered_map>
 #include <tuple>
+#include <boost/optional.hpp>
+
+template <typename T>
+using Opt = boost::optional<T>;
 
 /** 
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
@@ -315,7 +319,7 @@ class CCoinsView
 {
 public:
     //! Retrieve the CCoins (unspent transaction outputs) for a given txid
-    virtual bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    virtual Opt<CCoins> GetCoins(const uint256 &txid) const;
 
     //! Just check whether we have data for a given txid.
     //! This may (but cannot always) return true for fully spent transactions
@@ -344,7 +348,7 @@ protected:
 
 public:
     CCoinsViewBacked(CCoinsView *viewIn);
-    bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    Opt<CCoins> GetCoins(const uint256 &txid) const override;
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     void SetBackend(CCoinsView &viewIn);
@@ -398,7 +402,7 @@ public:
     ~CCoinsViewCache();
 
     // Standard CCoinsView methods
-    bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    Opt<CCoins> GetCoins(const uint256 &txid) const;
     bool HaveCoins(const uint256 &txid) const;
     uint256 GetBestBlock() const;
     void SetBestBlock(const uint256 &hashBlock);

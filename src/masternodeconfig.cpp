@@ -114,21 +114,21 @@ bool CMasternodeConfig::AvailableCoins(uint256 txHash, unsigned int index)
         return false;
     }
 
-    CCoins coins;
-    if(!pcoinsTip->GetCoins(txHash, coins) || index >=coins.vout.size() || coins.vout[index].IsNull())
+    Opt<CCoins> coins = pcoinsTip->GetCoins(txHash);
+    if (!coins || index >=coins->vout.size() || coins->vout[index].IsNull())
     {
         LogPrintf("CMasternodeConfig::AvailableCoins -- masternode collateraloutputtxid or collateraloutputindex is error,please check it\n");
         return false;
     }
 
     const int64_t ct = Params().GetConsensus().colleteral;     // colleteral amount
-    if(coins.vout[index].nValue != ct)
+    if (coins->vout[index].nValue != ct)
     {
-        LogPrintf("CMasternodeConfig::AvailableCoins -- colleteral amount must be:%d, but now is:%d\n", ct, coins.vout[index].nValue);
+        LogPrintf("CMasternodeConfig::AvailableCoins -- colleteral amount must be:%d, but now is:%d\n", ct, coins->vout[index].nValue);
         return false;
     }
 
-    if(chainActive.Height() - coins.nHeight + 1 < Params().GetConsensus().nMasternodeMinimumConfirmations) 
+    if(chainActive.Height() - coins->nHeight + 1 < Params().GetConsensus().nMasternodeMinimumConfirmations) 
     {
         LogPrintf("CMasternodeConfig::AvailableCoins -- Masternode UTXO must have at least %d confirmations\n",Params().GetConsensus().nMasternodeMinimumConfirmations);
         return false;

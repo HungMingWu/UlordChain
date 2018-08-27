@@ -682,11 +682,13 @@ UniValue gettxout(const UniValue& params, bool fHelp)
     if (fMempool) {
         LOCK(mempool.cs);
         CCoinsViewMemPool view(pcoinsTip.get(), mempool);
-        if (!view.GetCoins(hash, coins))
+        Opt<CCoins> coins = view.GetCoins(hash);
+        if (!coins)
             return NullUniValue;
-        mempool.pruneSpent(hash, coins); // TODO: this should be done by the CCoinsViewMemPool
+        mempool.pruneSpent(hash, *coins); // TODO: this should be done by the CCoinsViewMemPool
     } else {
-        if (!pcoinsTip->GetCoins(hash, coins))
+        Opt<CCoins> coins = pcoinsTip->GetCoins(hash);
+        if (!coins)
             return NullUniValue;
     }
     if (n<0 || (unsigned int)n>=coins.vout.size() || coins.vout[n].IsNull())

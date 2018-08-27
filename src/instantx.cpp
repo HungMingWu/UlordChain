@@ -534,10 +534,10 @@ bool CInstantSend::ResolveConflicts(const CTxLockCandidate& txLockCandidate, int
     }
     // Not in block yet, make sure all its inputs are still unspent
     for (const CTxIn& txin : txLockCandidate.txLockRequest.vin) {
-        CCoins coins;
-        if(!pcoinsTip->GetCoins(txin.prevout.hash, coins) ||
-           (unsigned int)txin.prevout.n>=coins.vout.size() ||
-           coins.vout[txin.prevout.n].IsNull()) {
+        Opt<CCoins> coins = pcoinsTip->GetCoins(txin.prevout.hash);
+        if (!coins ||
+           (unsigned int)txin.prevout.n>=coins->vout.size() ||
+           coins->vout[txin.prevout.n].IsNull()) {
             // Not in UTXO anymore? A conflicting tx was mined while we were waiting for votes.
             // Reprocess tip to make sure tx for this lock is included.
             LogPrintf("CTxLockRequest::ResolveConflicts -- Failed to find UTXO %s - disconnecting tip...\n", txin.prevout.ToStringShort());
@@ -863,12 +863,11 @@ bool CTxLockRequest::IsValid(bool fRequireUnspent) const
     }
 
     for (const CTxIn& txin : vin) {
-
-        CCoins coins;
         int nPrevoutHeight = 0;
-        if(!pcoinsTip->GetCoins(txin.prevout.hash, coins) ||
-           (unsigned int)txin.prevout.n>=coins.vout.size() ||
-           coins.vout[txin.prevout.n].IsNull()) {
+        Opt<CCoins> coins = pcoinsTip->GetCoins(txin.prevout.hash);
+        if (!coins ||
+           (unsigned int)txin.prevout.n>=coins->vout.size() ||
+           coins->vout[txin.prevout.n].IsNull()) {
             LogPrint("instantsend", "CTxLockRequest::IsValid -- Failed to find UTXO %s\n", txin.prevout.ToStringShort());
             // Normally above sould be enough, but in case we are reprocessing this because of
             // a lot of legit orphan votes we should also check already spent outpoints.
@@ -890,7 +889,7 @@ bool CTxLockRequest::IsValid(bool fRequireUnspent) const
             nPrevoutHeight = it->second ? it->second->nHeight : 0;
         }
 
-        int nTxAge = chainActive.Height() - (nPrevoutHeight ? nPrevoutHeight : coins.nHeight) + 1;
+        int nTxAge = chainActive.Height() - (nPrevoutHeight ? nPrevoutHeight : coins->nHeight) + 1;
         // 1 less than the "send IX" gui requires, in case of a block propagating the network at the time
         int nConfirmationsRequired = INSTANTSEND_CONFIRMATIONS_REQUIRED - 1;
 
@@ -900,7 +899,7 @@ bool CTxLockRequest::IsValid(bool fRequireUnspent) const
             return false;
         }
 
-        nValueIn += coins.vout[txin.prevout.n].nValue;
+        nValueIn += coins->vout[txin.prevout.n].nValue;
     }
 
     if(nValueOut > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN) {

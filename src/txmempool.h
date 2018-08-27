@@ -20,6 +20,9 @@
 #include "boost/multi_index/ordered_index.hpp"
 #include <boost/optional.hpp>
 
+template <typename T>
+using Opt = boost::optional<T>;
+
 class CAutoFile;
 class CBlockIndex;
 
@@ -641,7 +644,7 @@ protected:
 
 public:
     CCoinsViewMemPool(CCoinsView *baseIn, CTxMemPool &mempoolIn);
-    bool GetCoins(const uint256 &txid, CCoins &coins) const;
+    Opt<CCoins> GetCoins(const uint256 &txid) const;
     bool HaveCoins(const uint256 &txid) const;
 };
 

@@ -201,16 +201,16 @@ void CMasternode::Check(bool fForce)
         TRY_LOCK(cs_main, lockMain);
         if(!lockMain) return;
 
-        CCoins coins;
-        if(!pcoinsTip->GetCoins(vin.prevout.hash, coins) ||
-           (unsigned int)vin.prevout.n>=coins.vout.size() ||
-           coins.vout[vin.prevout.n].IsNull()) {
+        Opt<CCoins> coins = pcoinsTip->GetCoins(vin.prevout.hash);
+        if (!coins ||
+           (unsigned int)vin.prevout.n>=coins->vout.size() ||
+           coins->vout[vin.prevout.n].IsNull()) {
             nActiveState = MASTERNODE_OUTPOINT_SPENT;
             LogPrint("masternode", "CMasternode::Check -- Failed to find Masternode UTXO, masternode=%s\n", vin.prevout.ToStringShort());
             return;
         }
 		
-		nHeight = chainActive.Height();
+        nHeight = chainActive.Height();
     }
 
     if(IsPoSeBanned()) {
@@ -769,18 +769,18 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
             return false;
         }
 
-        CCoins coins;
-        if(!pcoinsTip->GetCoins(vin.prevout.hash, coins) ||
-           (unsigned int)vin.prevout.n>=coins.vout.size() ||
-           coins.vout[vin.prevout.n].IsNull()) {
+        Opt<CCoins> coins = pcoinsTip->GetCoins(vin.prevout.hash);
+        if (!coins ||
+           (unsigned int)vin.prevout.n>=coins->vout.size() ||
+           coins->vout[vin.prevout.n].IsNull()) {
             LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Failed to find Masternode UTXO, masternode=%s\n", vin.prevout.ToStringShort());
             return false;
         }
-        if(coins.vout[vin.prevout.n].nValue != ct) {
+        if (coins->vout[vin.prevout.n].nValue != ct) {
             LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should have %lld UT, masternode=%s\n", ct, vin.prevout.ToStringShort());
             return false;
         }
-        if(chainActive.Height() - coins.nHeight + 1 < Params().GetConsensus().nMasternodeMinimumConfirmations) {
+        if (chainActive.Height() - coins->nHeight + 1 < Params().GetConsensus().nMasternodeMinimumConfirmations) {
             LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
                     Params().GetConsensus().nMasternodeMinimumConfirmations, vin.prevout.ToStringShort());
             // maybe we miss few blocks, let this mnb to be checked again later
@@ -842,15 +842,15 @@ bool CMasternodeBroadcast::getPubKeyId(CKeyID& pubKeyId)
     uint256 txHash = uint256S(mne.getTxHash());
     LogPrintf("CMasternodeBroadcast::getPubKeyId -- hash=%s  index=%d \n", mne.getTxHash(), index);	
 
-    CCoins coins;
-    if(!pcoinsTip->GetCoins(txHash, coins) || index >=coins.vout.size() || coins.vout[index].IsNull())
+    Opt<CCoins> coins = pcoinsTip->GetCoins(txHash);
+    if (!coins || index >=coins->vout.size() || coins->vout[index].IsNull())
     {
         LogPrintf("CMasternodeBroadcast::getPubKeyId -- masternode collateraloutputtxid or collateraloutputindex is error,please check it\n");
         return false;
     }
     
     CTxDestination address1;
-    ExtractDestination(coins.vout[index].scriptPubKey, address1);
+    ExtractDestination(coins->vout[index].scriptPubKey, address1);
     CBitcoinAddress address2(address1);
 
     if (!address2.GetKeyID(pubKeyId)) {
