@@ -34,14 +34,12 @@ bool CGovernanceObjectVoteFile::HasVote(const uint256& nHash) const
     return true;
 }
 
-bool CGovernanceObjectVoteFile::GetVote(const uint256& nHash, CGovernanceVote& vote) const
+boost::optional<CGovernanceVote> CGovernanceObjectVoteFile::GetVote(const uint256& nHash) const
 {
     vote_m_cit it = mapVoteIndex.find(nHash);
-    if(it == mapVoteIndex.end()) {
-        return false;
-    }
-    vote = *(it->second);
-    return true;
+    if(it == mapVoteIndex.end())
+        return {};
+    return *(it->second);
 }
 
 std::vector<CGovernanceVote> CGovernanceObjectVoteFile::GetVotes() const

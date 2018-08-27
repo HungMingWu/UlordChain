@@ -2334,7 +2334,8 @@ bool AbortNode(const std::string& strMessage, const std::string& userMessage="")
 bool AbortNode(CValidationState& state, const std::string& strMessage, const std::string& userMessage="")
 {
     AbortNode(strMessage, userMessage);
-    return state.Error(strMessage);
+    state.Error(strMessage);
+    return false;
 }
 
 } // anon namespace
@@ -3410,8 +3411,10 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode) {
     // Write blocks and block index to disk.
     if (fDoFullFlush || fPeriodicWrite) {
         // Depend on nMinDiskSpace to ensure we can write block index
-        if (!CheckDiskSpace(0))
-            return state.Error("out of disk space");
+        if (!CheckDiskSpace(0)) {
+            state.Error("out of disk space");
+            return false;
+        }
         // First make sure all block and undo data is flushed to disk.
         FlushBlockFile();
         // Then update all block file information (which may refer to block and undo files).
@@ -3444,8 +3447,10 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode) {
         // twice (once in the log, and once in the tables). This is already
         // an overestimation, as most will delete an existing entry or
         // overwrite one. Still, use a conservative safety factor of 2.
-        if (!CheckDiskSpace(128 * 2 * 2 * pcoinsTip->GetCacheSize()))
-            return state.Error("out of disk space");
+        if (!CheckDiskSpace(128 * 2 * 2 * pcoinsTip->GetCacheSize())) {
+            state.Error("out of disk space");
+            return false;
+        }
         if(!pclaimTrie->WriteToDisk())                                                                                                                
             return AbortNode("Failed to write to claim trie database");
         // Flush the chainstate (which may refer to block index entries).
@@ -4126,8 +4131,10 @@ bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAdd
                     fclose(file);
                 }
             }
-            else
-                return state.Error("out of disk space");
+            else {
+                state.Error("out of disk space");
+                return false;
+            }
         }
     }
 
@@ -4159,8 +4166,10 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
                 fclose(file);
             }
         }
-        else
-            return state.Error("out of disk space");
+        else {
+            state.Error("out of disk space");
+            return false;
+        }
     }
 
     return true;
@@ -4299,12 +4308,12 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     return true;
 }
 
-static bool CheckIndexAgainstCheckpoint(const CBlockIndex* pindexPrev, CValidationState& state, const CChainParams& chainparams, const uint256& hash)
+static bool CheckIndexAgainstCheckpoint(const CBlockIndex &pindexPrev, CValidationState& state, const CChainParams& chainparams, const uint256& hash)
 {
-    if (*pindexPrev->phashBlock == chainparams.GetConsensus().hashGenesisBlock)
+    if (*pindexPrev.phashBlock == chainparams.GetConsensus().hashGenesisBlock)
         return true;
 
-    int nHeight = pindexPrev->nHeight+1;
+    int nHeight = pindexPrev.nHeight + 1;
     // Don't accept any forks from the main chain prior to last checkpoint
     CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
     if (pcheckpoint && nHeight < pcheckpoint->nHeight) {
@@ -4447,12 +4456,12 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
         assert(pindexPrev);
         if (fCheckpointsEnabled)
         {
-            uint256 lastCheckpoint_t = Checkpoints::GetHeightCheckpoint(pindexPrev->nHeight+1 ,chainparams.Checkpoints());
-            if(lastCheckpoint_t != uint256())
+            boost::optional<uint256> lastCheckpoint_t = Checkpoints::GetHeightCheckpoint(pindexPrev->nHeight + 1 ,chainparams.Checkpoints());
+            if (lastCheckpoint_t)
             {
-                 if (hash != lastCheckpoint_t)
+                 if (hash != *lastCheckpoint_t)
                  {
-                    LogPrintf("synchronous chain height=%d hash = [%s][%s]\n",pindexPrev->nHeight+1,hash.ToString(),lastCheckpoint_t.ToString() );
+                    LogPrintf("synchronous chain height=%d hash = [%s][%s]\n", pindexPrev->nHeight + 1, hash.ToString(), lastCheckpoint_t->ToString() );
                     bool ret = error("%s: checkpoint block invalid", __func__);
                     state.DoS(100, REJECT_INVALID, "bad-prevblk");
                     return ret;
@@ -4464,7 +4473,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
             }
         }
 	    	    
-        if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, hash))
+        if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(*pindexPrev, state, chainparams, hash))
             return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
         if (!ContextualCheckBlockHeader(block, state, pindexPrev))
@@ -4593,7 +4602,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
 {
     AssertLockHeld(cs_main);
     assert(pindexPrev && pindexPrev == chainActive.Tip());
-    if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, block.GetHash()))
+    if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(*pindexPrev, state, chainparams, block.GetHash()))
         return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
     CCoinsViewCache viewNew(pcoinsTip.get());

@@ -60,12 +60,11 @@ bool CGovernanceManager::HaveVoteForHash(uint256 nHash)
 {
     LOCK(cs);
 
-    CGovernanceObject* pGovobj = NULL;
-    if(!mapVoteToObject.Get(nHash,pGovobj)) {
+    boost::optional<CGovernanceObject*> pGovobj = mapVoteToObject.Get(nHash);
+    if (!pGovobj)
         return false;
-    }
 
-    if(!pGovobj->GetVoteFile().HasVote(nHash)) {
+    if(!pGovobj.get()->GetVoteFile().HasVote(nHash)) {
         return false;
     }
     return true;
@@ -75,17 +74,15 @@ bool CGovernanceManager::SerializeVoteForHash(uint256 nHash, CDataStream& ss)
 {
     LOCK(cs);
 
-    CGovernanceObject* pGovobj = NULL;
-    if(!mapVoteToObject.Get(nHash,pGovobj)) {
+    boost::optional<CGovernanceObject*> pGovobj = mapVoteToObject.Get(nHash);
+    if (!pGovobj)
         return false;
-    }
 
-    CGovernanceVote vote;
-    if(!pGovobj->GetVoteFile().GetVote(nHash, vote)) {
+    boost::optional<CGovernanceVote> vote = pGovobj.get()->GetVoteFile().GetVote(nHash);
+    if (!vote)
         return false;
-    }
 
-    ss << vote;
+    ss << *vote;
     return true;
 }
 

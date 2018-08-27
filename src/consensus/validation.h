@@ -51,11 +51,10 @@ public:
                  const std::string &_strDebugMessage="") {
         return DoS(0, _chRejectCode, _strRejectReason, false, _strDebugMessage);
     }
-    bool Error(const std::string& strRejectReasonIn) {
+    void Error(const std::string& strRejectReasonIn) {
         if (mode == MODE_VALID)
             strRejectReason = strRejectReasonIn;
         mode = MODE_ERROR;
-        return false;
     }
     bool IsValid() const {
         return mode == MODE_VALID;

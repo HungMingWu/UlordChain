@@ -80,19 +80,19 @@ namespace Checkpoints {
         return NULL;
     }
     
-    uint256 GetHeightCheckpoint(int nHeight ,const CCheckpointData& data)
+    boost::optional<uint256> GetHeightCheckpoint(int nHeight ,const CCheckpointData& data)
     {
         const MapCheckpoints& checkpoints = data.mapCheckpoints;
 
         std::map<int, uint256>::const_iterator it = checkpoints.find(nHeight);
 
-        if(it !=checkpoints.end() )
+        if (it !=checkpoints.end() )
         {
                return   it->second;
         }
         else
         {
-            return uint256();
+            return {};
         }
     }
 

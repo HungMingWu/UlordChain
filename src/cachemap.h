@@ -10,6 +10,7 @@
 #include <cstddef>
 
 #include "serialize.h"
+#include <boost/optional.hpp>
 
 /**
  * Serializable structure for key/value items
@@ -130,15 +131,13 @@ public:
         return (it != mapIndex.end());
     }
 
-    bool Get(const K& key, V& value) const
+    boost::optional<V> Get(const K& key) const
     {
         map_cit it = mapIndex.find(key);
-        if(it == mapIndex.end()) {
-            return false;
-        }
+        if (it == mapIndex.end())
+            return {};
         item_t& item = *(it->second);
-        value = item.value;
-        return true;
+        return item.value;
     }
 
     void Erase(const K& key)

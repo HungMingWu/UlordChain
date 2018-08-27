@@ -23,11 +23,11 @@ bool Compare(const CacheMap<int,int>& map1, const CacheMap<int,int>& map2 )
         if(!map2.HasKey(it->key)) {
             return false;
         }
-        int val = 0;
-        if(!map2.Get(it->key, val)) {
+        boost::optional<int> val = map2.Get(it->key);
+        if (!val) {
             return false;
         }
-        if(it->value != val) {
+        if (it->value != *val) {
             return false;
         }
     }
@@ -37,11 +37,10 @@ bool Compare(const CacheMap<int,int>& map1, const CacheMap<int,int>& map2 )
         if(!map1.HasKey(it->key)) {
             return false;
         }
-        int val = 0;
-        if(!map1.Get(it->key, val)) {
+        boost::optional<int> val = map1.Get(it->key);
+        if (!val)
             return false;
-        }
-        if(it->value != val) {
+        if (it->value != *val) {
             return false;
         }
     }
@@ -79,9 +78,9 @@ BOOST_AUTO_TEST_CASE(cachemap_test)
 
     // check that the map contains the expected items
     for(int i = 0; i < 10; ++i) {
-        int nVal = 0;
-        BOOST_CHECK(mapTest1.Get(i, nVal) == true);
-        BOOST_CHECK(nVal == i);
+        boost::optional<int> nVal = mapTest1.Get(i);
+        BOOST_CHECK(nVal);
+        BOOST_CHECK(*nVal == i);
     }
 
     // check that the map no longer contains the first item
@@ -99,10 +98,10 @@ BOOST_AUTO_TEST_CASE(cachemap_test)
     // check that the map contains the expected items
     int expected[] = { 0, 1, 2, 3, 4, 6, 7, 8, 9 };
     for(size_t i = 0; i < 9; ++i) {
-        int nVal = 0;
         int eVal = expected[i];
-        BOOST_CHECK(mapTest1.Get(eVal, nVal) == true);
-        BOOST_CHECK(nVal == eVal);
+        boost::optional<int> nVal = mapTest1.Get(eVal);
+        BOOST_CHECK(nVal);
+        BOOST_CHECK(*nVal == eVal);
     }
 
     // test serialization

@@ -7,6 +7,7 @@
 
 #include <list>
 #include <map>
+#include <boost/optional.hpp>
 
 #include "governance-vote.h"
 #include "serialize.h"
@@ -62,7 +63,7 @@ public:
     /**
      * Retrieve a vote cached in memory
      */
-    bool GetVote(const uint256& nHash, CGovernanceVote& vote) const;
+    boost::optional<CGovernanceVote> GetVote(const uint256& nHash) const;
 
     int GetVoteCount() {
         return nMemoryVotes;
