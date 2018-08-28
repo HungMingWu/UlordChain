@@ -964,21 +964,17 @@ int GetUTXOHeight(const COutPoint& outpoint)
 
 int GetInputAge(const CTxIn &txin)
 {
-    CCoinsView viewDummy;
-    CCoinsViewCache view(&viewDummy);
-    {
-        LOCK(mempool.cs);
-        CCoinsViewMemPool viewMempool(pcoinsTip.get(), mempool);
-        view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
+    LOCK(mempool.cs);
+    CCoinsViewMemPool viewMempool(pcoinsTip.get(), mempool);
+    CCoinsViewCache view(&viewMempool);
 
-        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+    const CCoins* coins = view.AccessCoins(txin.prevout.hash);
 
-        if (coins) {
-            if(coins->nHeight < 0) return 0;
-            return chainActive.Height() - coins->nHeight + 1;
-        } else {
-            return -1;
-        }
+    if (coins) {
+        if(coins->nHeight < 0) return 0;
+        return chainActive.Height() - coins->nHeight + 1;
+    } else {
+        return -1;
     }
 }
 
@@ -2260,12 +2256,14 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
 
 namespace {
 
-bool UndoWriteToDisk(const CBlockUndo& blockundo, CDiskBlockPos& pos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
+Opt<CDiskBlockPos> UndoWriteToDisk(const CBlockUndo& blockundo, const CDiskBlockPos& oldpos, const uint256& hashBlock, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
-    CAutoFile fileout(OpenUndoFile(pos), SER_DISK, CLIENT_VERSION);
-    if (fileout.IsNull())
-        return error("%s: OpenUndoFile failed", __func__);
+    CAutoFile fileout(OpenUndoFile(oldpos), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        error("%s: OpenUndoFile failed", __func__);
+        return {};
+    }
 
     // Write index header
     unsigned int nSize = fileout.GetSerializeSize(blockundo);
@@ -2273,9 +2271,12 @@ bool UndoWriteToDisk(const CBlockUndo& blockundo, CDiskBlockPos& pos, const uint
 
     // Write undo data
     long fileOutPos = ftell(fileout.Get());
-    if (fileOutPos < 0)
-        return error("%s: ftell failed", __func__);
-    pos.nPos = (unsigned int)fileOutPos;
+    if (fileOutPos < 0) {
+        error("%s: ftell failed", __func__);
+        return {};
+    }
+    CDiskBlockPos newpos(oldpos);
+    newpos.nPos = (unsigned int)fileOutPos;
     fileout << blockundo;
 
     // calculate & write checksum
@@ -2284,7 +2285,7 @@ bool UndoWriteToDisk(const CBlockUndo& blockundo, CDiskBlockPos& pos, const uint
     hasher << blockundo;
     fileout << hasher.GetHash();
 
-    return true;
+    return newpos;
 }
 
 Opt<CBlockUndo> UndoReadFromDisk(const CDiskBlockPos& pos, const uint256& hashBlock)
@@ -2629,7 +2630,7 @@ void static FlushBlockFile(bool fFinalize = false)
     }
 }
 
-bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize);
+Opt<CDiskBlockPos> FindUndoPos(CValidationState &state, int nFile, unsigned int nAddSize);
 
 static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
 
@@ -3298,14 +3299,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (pindex->GetUndoPos().IsNull() || !pindex->IsValid(BLOCK_VALID_SCRIPTS))
     {
         if (pindex->GetUndoPos().IsNull()) {
-            CDiskBlockPos pos;
-            if (!FindUndoPos(state, pindex->nFile, pos, ::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40))
+            Opt<CDiskBlockPos> pos = FindUndoPos(state, pindex->nFile, ::GetSerializeSize(blockundo, SER_DISK, CLIENT_VERSION) + 40);
+            if (!pos)
                 return error("ConnectBlock(): FindUndoPos failed");
-            if (!UndoWriteToDisk(blockundo, pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart()))
+            pos = UndoWriteToDisk(blockundo, *pos, pindex->pprev->GetBlockHash(), chainparams.MessageStart());
+            if (!pos)
                 return AbortNode(state, "Failed to write undo data");
 
             // update nUndoPos in block index
-            pindex->nUndoPos = pos.nPos;
+            pindex->nUndoPos = pos->nPos;
             pindex->nStatus |= BLOCK_HAVE_UNDO;
         }
 
@@ -3421,16 +3423,14 @@ bool static FlushStateToDisk(CValidationState &state, FlushStateMode mode) {
         {
             std::vector<std::pair<int, const CBlockFileInfo*> > vFiles;
             vFiles.reserve(setDirtyFileInfo.size());
-            for (set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end(); ) {
-                vFiles.push_back(make_pair(*it, &vinfoBlockFile[*it]));
-                setDirtyFileInfo.erase(it++);
-            }
+            for (const auto &file : setDirtyFileInfo)
+                vFiles.push_back(make_pair(file, &vinfoBlockFile[file]));
+            setDirtyFileInfo.clear();
             std::vector<const CBlockIndex*> vBlocks;
             vBlocks.reserve(setDirtyBlockIndex.size());
-            for (set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end(); ) {
-                vBlocks.push_back(*it);
-                setDirtyBlockIndex.erase(it++);
-            }
+            for (const auto &block : setDirtyBlockIndex)
+                vBlocks.push_back(block);
+            setDirtyBlockIndex.clear();
             if (!pblocktree->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) {
                 return AbortNode(state, "Files to write to block index database");
             }
@@ -4142,8 +4142,9 @@ bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAdd
     return true;
 }
 
-bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigned int nAddSize)
+Opt<CDiskBlockPos> FindUndoPos(CValidationState &state, int nFile, unsigned int nAddSize)
 {
+    CDiskBlockPos pos;
     pos.nFile = nFile;
 
     LOCK(cs_LastBlockFile);
@@ -4168,11 +4169,11 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
         }
         else {
             state.Error("out of disk space");
-            return false;
+            return {};
         }
     }
 
-    return true;
+    return pos;
 }
 
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW)
